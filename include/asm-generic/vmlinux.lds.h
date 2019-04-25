@@ -543,6 +543,21 @@
 	. = ALIGN((align));						\
 	__end_rodata = .;
 
+
+/*
+ * .text..L.cfi.jumptable.* contain Control-Flow Integrity (CFI)
+ * jump table entries.
+ */
+#ifdef CONFIG_CFI_CLANG
+#define TEXT_CFIJT							\
+		. = ALIGN(PAGE_SIZE);					\
+		__cfi_jt_start = .;					\
+		*(.text..L.cfi.jumptable .text..L.cfi.jumptable.*)	\
+		__cfi_jt_end = .;
+#else
+#define TEXT_CFIJT
+#endif
+
 /*
  * .text section. Map to function alignment to avoid address changes
  * during second ld run in second ld pass when generating System.map
@@ -557,6 +572,7 @@
 		*(.text..refcount)					\
 		*(.text..nomcount)					\
 		*(.ref.text)						\
+		TEXT_CFIJT						\
 	MEM_KEEP(init.text*)						\
 	MEM_KEEP(exit.text*)						\
 
