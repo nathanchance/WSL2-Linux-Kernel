@@ -526,7 +526,12 @@ struct iwl_tfh_tfd *iwl_pcie_gen2_build_tfd(struct iwl_trans *trans,
 
 	hdr_len = ieee80211_hdrlen(hdr->frame_control);
 
-	if (amsdu)
+	/*
+	 * Only build A-MSDUs here if doing so by GSO, otherwise it may be
+	 * an A-MSDU for other reasons, e.g. NAN or an A-MSDU having been
+	 * built in the higher layers already.
+	 */
+	if (amsdu && skb_shinfo(skb)->gso_size)
 		return iwl_pcie_gen2_build_tx_amsdu(trans, txq, dev_cmd, skb,
 						    out_meta, hdr_len, len);
 
@@ -554,18 +559,6 @@ int iwl_trans_pcie_gen2_tx(struct iwl_trans *trans, struct sk_buff *skb,
 		return -ENOMEM;
 
 	spin_lock(&txq->lock);
-
-	if (trans->cfg->device_family >= IWL_DEVICE_FAMILY_22560) {
-		struct iwl_tx_cmd_gen3 *tx_cmd_gen3 =
-			(void *)dev_cmd->payload;
-
-		cmd_len = le16_to_cpu(tx_cmd_gen3->len);
-	} else {
-		struct iwl_tx_cmd_gen2 *tx_cmd_gen2 =
-			(void *)dev_cmd->payload;
-
-		cmd_len = le16_to_cpu(tx_cmd_gen2->len);
-	}
 
 	if (iwl_queue_space(trans, txq) < txq->high_mark) {
 		iwl_stop_queue(trans, txq);
@@ -602,6 +595,18 @@ int iwl_trans_pcie_gen2_tx(struct iwl_trans *trans, struct sk_buff *skb,
 	if (!tfd) {
 		spin_unlock(&txq->lock);
 		return -1;
+	}
+
+	if (trans->cfg->device_family >= IWL_DEVICE_FAMILY_22560) {
+		struct iwl_tx_cmd_gen3 *tx_cmd_gen3 =
+			(void *)dev_cmd->payload;
+
+		cmd_len = le16_to_cpu(tx_cmd_gen3->len);
+	} else {
+		struct iwl_tx_cmd_gen2 *tx_cmd_gen2 =
+			(void *)dev_cmd->payload;
+
+		cmd_len = le16_to_cpu(tx_cmd_gen2->len);
 	}
 
 	/* Set up entry for this TFD in Tx byte-count array */
