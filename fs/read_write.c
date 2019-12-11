@@ -1700,7 +1700,7 @@ static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
 	if (unlikely(pos < 0))
 		return -EINVAL;
 
-	 if (unlikely((loff_t) (pos + len) < 0))
+	if (unlikely((loff_t) (pos + len) < 0))
 		return -EINVAL;
 
 	if (unlikely(inode->i_flctx && mandatory_lock(inode))) {
