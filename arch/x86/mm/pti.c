@@ -498,6 +498,18 @@ static void pti_clone_entry_text(void)
 	pti_clone_pgtable((unsigned long) __entry_text_start,
 			  (unsigned long) __entry_text_end,
 			  PTI_CLONE_PMD);
+
+	/*
+	 * If CFI is enabled, also map jump tables, so the entry code can
+	 * make indirect calls.
+	 */
+	if (IS_ENABLED(CONFIG_CFI_CLANG)) {
+		unsigned long start = PFN_ALIGN((unsigned long) __cfi_jt_start);
+		unsigned long end   = PFN_ALIGN((unsigned long) __cfi_jt_end);
+
+		pti_clone_pgtable(start, end, PTI_CLONE_PMD);
+		set_memory_global(start, (end - start) >> PAGE_SHIFT);
+	}
 }
 
 /*
