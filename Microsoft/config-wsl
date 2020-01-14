@@ -1,10 +1,10 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86 4.19.95 Kernel Configuration
+# Linux/x86 4.19.96 Kernel Configuration
 #
 
 #
-# Compiler: ClangBuiltLinux clang version 10.0.0 (git://github.com/llvm/llvm-project 995c18fc5051850782b1c096233867b8e56e0dea)
+# Compiler: ClangBuiltLinux clang version 10.0.0 (git://github.com/llvm/llvm-project 1ab13f8cc3f79d67c9b337cc0f4ac1dde0460be8)
 #
 CONFIG_GCC_VERSION=0
 CONFIG_CC_IS_CLANG=y
