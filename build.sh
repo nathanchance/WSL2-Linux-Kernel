@@ -9,6 +9,7 @@ while (( ${#} )); do
     case ${1} in
         *=*) export "${1?}" ;;
         -j|--jobs) JOBS=${1} ;;
+        -u|--update-config-only) UPDATE_CONFIG_ONLY=true ;;
         -v|--verbose) VERBOSE=true ;;
     esac
     shift
@@ -38,6 +39,8 @@ printf '\n\e[01;32mToolchain location:\e[0m %s\n\n' "$(dirname "$(command -v "${
 printf '\e[01;32mToolchain version:\e[0m %s \n\n' "$("${CC}" --version | head -n1)"
 
 # Build the kernel
+MAKE_TARGETS=( distclean olddefconfig )
+${UPDATE_CONFIG_ONLY:=false} || MAKE_TARGETS=( "${MAKE_TARGETS[@]}" all )
 ${VERBOSE:=false} || COND_MAKE_ARGS=( -s )
 set -x
 time make -C "${BASE}" \
@@ -60,11 +63,10 @@ time make -C "${BASE}" \
           OBJDUMP="${OBJDUMP}" \
           STRIP="${STRIP}" \
           ${V:+V=${V}} \
-          distclean \
-          olddefconfig \
-          all
-
-# Let the user know where the kernel will be
+          "${MAKE_TARGETS[@]}"
 set +x
+${UPDATE_CONFIG_ONLY} && exit 0
+
+# Let the user know where the kernel will be (if we built one)
 KERNEL=${O}/arch/x86/boot/bzImage
 [[ -f ${KERNEL} ]] && printf '\n\e[01;32mKernel is now available at:\e[0m %s\n' "${KERNEL}"
