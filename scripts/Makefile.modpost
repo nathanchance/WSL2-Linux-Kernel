@@ -93,6 +93,8 @@ ifdef CONFIG_LTO_CLANG
 quiet_cmd_cc_lto_link_modules = LTO [M] $@
 cmd_cc_lto_link_modules =						\
 	$(LD) $(ld_flags) -r -o $(@)					\
+		$(shell [ -s $(@:$(modpost-ext).o=.o.symversions) ] &&	\
+			echo -T $(@:$(modpost-ext).o=.o.symversions))	\
 		--whole-archive $(filter-out FORCE,$^)
 
 $(modules:.ko=$(modpost-ext).o): %$(modpost-ext).o: %.o FORCE
