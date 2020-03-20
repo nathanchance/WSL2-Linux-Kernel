@@ -52,7 +52,7 @@ cmd_cc_cfi_link_modules =						\
 	--whole-archive $^
 
 %.cfi.o: %.mod.o %.o
-	$(call cmd,cc_cfi_link_modules)
+	$(call if_changed,cc_cfi_link_modules)
 
 # We now need only .cfi.o for linking the final module
 ko_deps := %.cfi.o
