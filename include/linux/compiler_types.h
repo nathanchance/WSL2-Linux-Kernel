@@ -233,6 +233,10 @@ struct ftrace_likely_data {
 # define __noscs
 #endif
 
+#ifndef __nomcount
+# define __nomcount
+#endif
+
 #ifndef asm_volatile_goto
 #define asm_volatile_goto(x...) asm goto(x)
 #endif
