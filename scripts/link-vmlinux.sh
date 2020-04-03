@@ -85,6 +85,33 @@ modpost_link()
 	${LD} ${KBUILD_LDFLAGS} -r -o ${1} ${lds} ${objects}
 }
 
+# If CONFIG_LTO_CLANG is selected, we postpone running recordmcount until
+# we have compiled LLVM IR to an object file.
+recordmcount()
+{
+	if [ -z "${CONFIG_LTO_CLANG}" ]; then
+		return
+	fi
+	if [ -z "${CONFIG_FTRACE_MCOUNT_RECORD}" ]; then
+		return
+	fi
+	if [ -n "${CC_USING_RECORD_MCOUNT}" ]; then
+		return
+	fi
+	if [ -n "${CC_USING_PATCHABLE_FUNCTION_ENTRY}" ]; then
+		return
+	fi
+
+	local flags=""
+
+	if [ -n "${RECORDMCOUNT_WARN}" ]; then
+		flags="-w"
+	fi
+
+	info MCOUNT $*
+	scripts/recordmcount ${flags} $*
+}
+
 # Link of vmlinux
 # ${1} - output file
 # ${2}, ${3}, ... - optional extra .o files
@@ -293,6 +320,11 @@ modpost_link vmlinux.o
 
 # modpost vmlinux.o to check for section mismatches
 ${MAKE} -f "${srctree}/scripts/Makefile.modpost" MODPOST_VMLINUX=1
+
+if [ -n "${CONFIG_LTO_CLANG}" ]; then
+	# Call recordmcount if needed
+	recordmcount vmlinux.o
+fi
 
 info MODINFO modules.builtin.modinfo
 ${OBJCOPY} -j .modinfo -O binary vmlinux.o modules.builtin.modinfo
