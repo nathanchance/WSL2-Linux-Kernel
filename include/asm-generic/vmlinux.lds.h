@@ -565,6 +565,7 @@
 		*(.text.hot TEXT_MAIN .text.fixup .text.unlikely)	\
 		NOINSTR_TEXT						\
 		*(.text..refcount)					\
+		*(.text..nomcount)					\
 		*(.ref.text)						\
 	MEM_KEEP(init.text*)						\
 	MEM_KEEP(exit.text*)						\
