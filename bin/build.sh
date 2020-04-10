@@ -34,7 +34,7 @@ function parse_parameters() {
 
 function set_toolchain() {
     # Add toolchain folders to PATH and request path override (PO environment variable)
-    export PATH="${PO:+${PO}:}${CBL_LLVM:+${CBL_LLVM}:}${CBL_BNTL:+${CBL_BNTL}:}${PATH}"
+    export PATH="${PO:+${PO}:}${CBL_LLVM:+${CBL_LLVM}:}${BASE}/bin:${CBL_BNTL:+${CBL_BNTL}:}${PATH}"
 
     # Set default values if user did not supply them above
     true \
@@ -46,7 +46,7 @@ function set_toolchain() {
         "${HOSTLDFLAGS:=-fuse-ld=lld}" \
         "${JOBS:="$(nproc)"}" \
         "${LD:=ld.lld}" \
-        "${LLVM_IAS:=0}" \
+        "${LLVM_IAS:=1}" \
         "${NM:=llvm-nm}" \
         "${O:=${BASE}/out/${ARCH}}" \
         "${OBJCOPY:=llvm-objcopy}" \
