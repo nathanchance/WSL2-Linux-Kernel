@@ -1255,7 +1255,7 @@ static struct page *alloc_gigantic_page(struct hstate *h, gfp_t gfp_mask,
 
 		for_each_node_mask(node, *nodemask) {
 			if (!hugetlb_cma[node])
-				break;
+				continue;
 
 			page = cma_alloc(hugetlb_cma[node], nr_pages,
 					 huge_page_order(h), true);
@@ -1308,8 +1308,14 @@ static void update_and_free_page(struct hstate *h, struct page *page)
 	set_compound_page_dtor(page, NULL_COMPOUND_DTOR);
 	set_page_refcounted(page);
 	if (hstate_is_gigantic(h)) {
+		/*
+		 * Temporarily drop the hugetlb_lock, because
+		 * we might block in free_gigantic_page().
+		 */
+		spin_unlock(&hugetlb_lock);
 		destroy_compound_gigantic_page(page, huge_page_order(h));
 		free_gigantic_page(page, huge_page_order(h));
+		spin_lock(&hugetlb_lock);
 	} else {
 		__free_pages(page, huge_page_order(h));
 	}
@@ -3225,6 +3231,7 @@ static int __init hugetlb_init(void)
 			default_hstate.max_huge_pages = default_hstate_max_huge_pages;
 	}
 
+	hugetlb_cma_check();
 	hugetlb_init_hstates();
 	gather_bootmem_prealloc();
 	report_hugepages();
@@ -5540,6 +5547,7 @@ void move_hugetlb_state(struct page *oldpage, struct page *newpage, int reason)
 
 #ifdef CONFIG_CMA
 static unsigned long hugetlb_cma_size __initdata;
+static bool cma_reserve_called __initdata;
 
 static int __init cmdline_parse_hugetlb_cma(char *p)
 {
@@ -5553,6 +5561,8 @@ void __init hugetlb_cma_reserve(int order)
 {
 	unsigned long size, reserved, per_node;
 	int nid;
+
+	cma_reserve_called = true;
 
 	if (!hugetlb_cma_size)
 		return;
@@ -5573,38 +5583,18 @@ void __init hugetlb_cma_reserve(int order)
 
 	reserved = 0;
 	for_each_node_state(nid, N_ONLINE) {
-		unsigned long start_pfn, end_pfn;
-		unsigned long min_pfn = 0, max_pfn = 0;
-		int res, i;
-
-		for_each_mem_pfn_range(i, nid, &start_pfn, &end_pfn, NULL) {
-			if (!min_pfn)
-				min_pfn = start_pfn;
-			max_pfn = end_pfn;
-		}
+		int res;
 
 		size = min(per_node, hugetlb_cma_size - reserved);
 		size = round_up(size, PAGE_SIZE << order);
 
-		if (size > ((max_pfn - min_pfn) << PAGE_SHIFT) / 2) {
-			pr_warn("hugetlb_cma: cma_area is too big, please try less than %lu MiB\n",
-				round_down(((max_pfn - min_pfn) << PAGE_SHIFT) *
-					   nr_online_nodes / 2 / SZ_1M,
-					   PAGE_SIZE << order));
-			break;
-		}
-
-		res = cma_declare_contiguous(PFN_PHYS(min_pfn), size,
-					     PFN_PHYS(max_pfn),
-					     PAGE_SIZE << order,
-					     0, false,
-					     "hugetlb", &hugetlb_cma[nid]);
+		res = cma_declare_contiguous_nid(0, size, 0, PAGE_SIZE << order,
+						 0, false, "hugetlb",
+						 &hugetlb_cma[nid], nid);
 		if (res) {
-			phys_addr_t begpa = PFN_PHYS(min_pfn);
-			phys_addr_t endpa = PFN_PHYS(max_pfn);
-			pr_warn("%s: reservation failed: err %d, node %d, [%pap, %pap)\n",
-				__func__, res, nid, &begpa, &endpa);
-			break;
+			pr_warn("hugetlb_cma: reservation failed: err %d, node %d",
+				res, nid);
+			continue;
 		}
 
 		reserved += size;
@@ -5614,6 +5604,14 @@ void __init hugetlb_cma_reserve(int order)
 		if (reserved >= hugetlb_cma_size)
 			break;
 	}
+}
+
+void __init hugetlb_cma_check(void)
+{
+	if (!hugetlb_cma_size || cma_reserve_called)
+		return;
+
+	pr_warn("hugetlb_cma: the option isn't supported by current arch\n");
 }
 
 #endif /* CONFIG_CMA */

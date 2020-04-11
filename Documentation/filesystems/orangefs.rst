@@ -121,7 +121,7 @@ it comes to that question::
 
 Create an /etc/pvfs2tab file::
 
-    Localhost is fine for your pvfs2tab file.
+Localhost is fine for your pvfs2tab file:
 
     echo tcp://localhost:3334/orangefs /pvfsmnt pvfs2 defaults,noauto 0 0 > \
 	/etc/pvfs2tab
