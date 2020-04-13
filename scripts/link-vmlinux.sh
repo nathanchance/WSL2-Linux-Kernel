@@ -93,8 +93,17 @@ objtool_link()
 {
 	local objtoolopt;
 
+	if [ "${CONFIG_LTO_CLANG} ${CONFIG_STACK_VALIDATION}" = "y y" ]; then
+		# Don't perform vmlinux validation unless explicitly requested,
+		# but run objtool on vmlinux.o now that we have an object file.
+		objtoolopt="check"
+	fi
+
 	if [ -n "${CONFIG_VMLINUX_VALIDATION}" ]; then
 		objtoolopt="check --vmlinux"
+	fi
+
+	if [ -n "${objtoolopt}" ]; then
 		if [ -z "${CONFIG_FRAME_POINTER}" ]; then
 			objtoolopt="${objtoolopt} --no-fp"
 		fi
@@ -106,6 +115,12 @@ objtool_link()
 		fi
 		if [ -n "${CONFIG_X86_SMAP}" ]; then
 			objtoolopt="${objtoolopt} --uaccess"
+		fi
+		if [ -n "${CONFIG_LTO_CLANG}" ]; then
+			# Generate __mcount_loc only if LTO is enabled
+			if [ -n ${USE_OBJTOOL_MCOUNT} ]; then
+				objtoolopt="${objtoolopt} --mcount"
+			fi
 		fi
 		info OBJTOOL ${1}
 		tools/objtool/objtool ${objtoolopt} ${1}
