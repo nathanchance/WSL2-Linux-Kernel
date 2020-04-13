@@ -108,6 +108,29 @@ recordmcount()
 	${objtree}/scripts/recordmcount ${flags} $*
 }
 
+# If CONFIG_LTO_CLANG is selected, we postpone running objtool until
+# we have compiled LLVM IR to an object file.
+objtool()
+{
+	if [ "${CONFIG_LTO_CLANG} ${CONFIG_STACK_VALIDATION}" != "y y" ]; then
+		return
+	fi
+	if [ -n "${SKIP_STACK_VALIDATION}" ]; then
+		return
+	fi
+
+	local flags
+
+	[ -n "${CONFIG_UNWINDER_ORC}"  ] && flags="orc generate" || flags="check"
+	[ -z "${CONFIG_FRAME_POINTER}" ] && flags="${flags} --no-fp"
+	[ -n "${CONFIG_GCOV_KERNEL}"   ] && flags="${flags} --no-unreachable"
+	[ -n "${CONFIG_RETPOLINE}"     ] && flags="${flags} --retpoline"
+	[ -n "${CONFIG_X86_SMAP}"      ] && flags="${flags} --uaccess"
+
+	info OBJTOOL $*
+	${objtree}/tools/objtool/objtool ${flags} $*
+}
+
 # Link of vmlinux
 # ${1} - output file
 # ${2}, ${3}, ... - optional extra .o files
@@ -321,6 +344,7 @@ if [ -n "${CONFIG_LTO_CLANG}" ]; then
 	# If we postponed ELF processing steps due to LTO, process
 	# vmlinux.o instead.
 	recordmcount vmlinux.o
+	objtool vmlinux.o
 fi
 
 info MODINFO modules.builtin.modinfo
