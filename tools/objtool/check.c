@@ -606,6 +606,55 @@ static int add_ignore_alternatives(struct objtool_file *file)
 }
 
 /*
+ * CONFIG_CFI_CLANG: Check if the symbol points to a CFI jump table.
+ */
+static bool is_cfi_function(struct symbol *sym)
+{
+	char *p;
+
+	if (sym->type != STT_FUNC)
+		return false;
+
+	if (!strcmp(sym->name, "__cfi_check") ||
+	    !strncmp(sym->name, "__typeid__", 10))
+		return true;
+
+	p = strrchr(sym->name, '.');
+
+	return (p && !strcmp(p, ".cfi_jt"));
+}
+
+static bool is_cfi_section(struct section *sec)
+{
+	return (sec->name &&
+		(!strncmp(sec->name, ".text..L.cfi.jumptable", 22) ||
+		 !strcmp(sec->name, ".text.__cfi_check")));
+}
+
+/*
+ * CONFIG_CFI_CLANG: Ignore CFI jump tables.
+ */
+static void add_cfi_jumptables(struct objtool_file *file)
+{
+	struct section *sec;
+	struct symbol *func;
+	struct instruction *insn;
+
+	for_each_sec(file, sec) {
+		if (!is_cfi_section(sec))
+			continue;
+
+		list_for_each_entry(func, &sec->symbol_list, list) {
+			if (!is_cfi_function(func))
+				continue;
+
+			sym_for_each_insn(file, func, insn)
+				insn->ignore = true;
+		}
+	}
+}
+
+/*
  * Find the destination instructions for all jumps.
  */
 static int add_jump_destinations(struct objtool_file *file)
@@ -757,6 +806,9 @@ static int add_call_destinations(struct objtool_file *file)
 			insn->call_dest = find_func_by_offset(rela->sym->sec,
 							      dest_off);
 			if (!insn->call_dest) {
+				if (is_cfi_section(rela->sym->sec))
+					continue;
+
 				WARN_FUNC("can't find call dest symbol at %s+0x%lx",
 					  insn->sec, insn->offset,
 					  rela->sym->sec->name,
@@ -1564,6 +1616,7 @@ static int decode_sections(struct objtool_file *file)
 
 	add_ignores(file);
 	add_uaccess_safe(file);
+	add_cfi_jumptables(file);
 
 	ret = add_ignore_alternatives(file);
 	if (ret)
