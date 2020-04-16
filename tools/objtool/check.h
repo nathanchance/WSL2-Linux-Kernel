@@ -56,6 +56,11 @@ struct objtool_file {
 
 int check(const char *objname, bool orc);
 
+static inline u32 insn_hash(struct instruction *insn)
+{
+	return sec_offset_hash(insn->sec, insn->offset);
+}
+
 struct instruction *find_insn(struct objtool_file *file,
 			      struct section *sec, unsigned long offset);
 
