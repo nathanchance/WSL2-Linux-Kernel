@@ -40,6 +40,7 @@ struct section {
 	int idx;
 	unsigned int len;
 	bool changed, text, rodata;
+	void *section_info;
 };
 
 struct symbol {
@@ -78,9 +79,9 @@ struct elf {
 	struct list_head sections;
 	DECLARE_HASHTABLE(symbol_hash, 20);
 	DECLARE_HASHTABLE(symbol_name_hash, 20);
-	DECLARE_HASHTABLE(section_hash, 16);
-	DECLARE_HASHTABLE(section_name_hash, 16);
-	DECLARE_HASHTABLE(rela_hash, 20);
+	DECLARE_HASHTABLE(section_hash, 20);
+	DECLARE_HASHTABLE(section_name_hash, 20);
+	DECLARE_HASHTABLE(rela_hash, 21);
 };
 
 #define OFFSET_STRIDE_BITS	4
