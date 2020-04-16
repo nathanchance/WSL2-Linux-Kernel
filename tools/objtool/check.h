@@ -47,6 +47,10 @@ struct instruction {
 	struct orc_entry orc;
 };
 
+struct section_info {
+	struct instruction *last_insn;
+};
+
 struct objtool_file {
 	struct elf *elf;
 	struct list_head insn_list;
