@@ -237,6 +237,7 @@ static void clear_insn_state(struct insn_state *state)
 static int decode_instructions(struct objtool_file *file)
 {
 	struct section *sec;
+	struct section_info *sec_info = NULL;
 	struct symbol *func;
 	unsigned long offset;
 	struct instruction *insn;
@@ -252,6 +253,8 @@ static int decode_instructions(struct objtool_file *file)
 		    strcmp(sec->name, ".altinstr_aux") &&
 		    strncmp(sec->name, ".discard.", 9))
 			sec->text = true;
+
+		insn = NULL;
 
 		for (offset = 0; offset < sec->len; offset += insn->len) {
 			insn = malloc(sizeof(*insn));
@@ -277,6 +280,17 @@ static int decode_instructions(struct objtool_file *file)
 			hash_add(file->insn_hash, &insn->hash, insn_hash(insn));
 			list_add_tail(&insn->list, &file->insn_list);
 			nr_insns++;
+		}
+
+		if (insn) {
+			sec_info = malloc(sizeof(*sec_info));
+			if (!sec_info) {
+				WARN("malloc failed");
+				return -1;
+			}
+
+			sec_info->last_insn = insn;
+			sec->section_info = sec_info;
 		}
 
 		list_for_each_entry(func, &sec->symbol_list, list) {
@@ -312,7 +326,6 @@ static int add_dead_ends(struct objtool_file *file)
 	struct section *sec;
 	struct rela *rela;
 	struct instruction *insn;
-	bool found;
 
 	/*
 	 * By default, "ud2" is a dead end unless otherwise annotated, because
@@ -338,15 +351,13 @@ static int add_dead_ends(struct objtool_file *file)
 		if (insn)
 			insn = list_prev_entry(insn, list);
 		else if (rela->addend == rela->sym->sec->len) {
-			found = false;
-			list_for_each_entry_reverse(insn, &file->insn_list, list) {
-				if (insn->sec == rela->sym->sec) {
-					found = true;
-					break;
-				}
-			}
+			struct section_info *sec_info =
+				(struct section_info *)rela->sym->sec->section_info;
 
-			if (!found) {
+			if (sec_info)
+				insn = sec_info->last_insn;
+
+			if (!insn) {
 				WARN("can't find unreachable insn at %s+0x%x",
 				     rela->sym->sec->name, rela->addend);
 				return -1;
@@ -380,15 +391,13 @@ reachable:
 		if (insn)
 			insn = list_prev_entry(insn, list);
 		else if (rela->addend == rela->sym->sec->len) {
-			found = false;
-			list_for_each_entry_reverse(insn, &file->insn_list, list) {
-				if (insn->sec == rela->sym->sec) {
-					found = true;
-					break;
-				}
-			}
+			struct section_info *sec_info =
+				(struct section_info *)rela->sym->sec->section_info;
 
-			if (!found) {
+			if (sec_info)
+				insn = sec_info->last_insn;
+
+			if (!insn) {
 				WARN("can't find reachable insn at %s+0x%x",
 				     rela->sym->sec->name, rela->addend);
 				return -1;

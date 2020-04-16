@@ -40,6 +40,7 @@ struct section {
 	int idx;
 	unsigned int len;
 	bool changed, text, rodata;
+	void *section_info;
 };
 
 struct symbol {
