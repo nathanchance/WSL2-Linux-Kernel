@@ -2756,7 +2756,7 @@ static int io_splice_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 
 static bool io_splice_punt(struct file *file)
 {
-	if (get_pipe_info(file))
+	if (get_pipe_info(file, true))
 		return false;
 	if (!io_file_supports_async(file))
 		return true;
@@ -3266,7 +3266,7 @@ static int io_madvise(struct io_kiocb *req, bool force_nonblock)
 	if (force_nonblock)
 		return -EAGAIN;
 
-	ret = do_madvise(ma->addr, ma->len, ma->advice);
+	ret = do_madvise(NULL, req->work.mm, ma->addr, ma->len, ma->advice);
 	if (ret < 0)
 		req_set_fail_links(req);
 	io_cqring_add_event(req, ret);

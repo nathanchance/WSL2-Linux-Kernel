@@ -518,7 +518,7 @@ static bool ttm_bo_delayed_delete(struct ttm_bo_device *bdev, bool remove_all)
 	INIT_LIST_HEAD(&removed);
 
 	spin_lock(&glob->lru_lock);
-	while (!list_empty(&bdev->ddestroy)) {
+	while (!list_empty(&bdev->ddestroy) && !need_resched()) {
 		struct ttm_buffer_object *bo;
 
 		bo = list_first_entry(&bdev->ddestroy, struct ttm_buffer_object,
@@ -588,7 +588,8 @@ static void ttm_bo_release(struct kref *kref)
 		ttm_mem_io_unlock(man);
 	}
 
-	if (!dma_resv_test_signaled_rcu(bo->base.resv, true)) {
+	if (!dma_resv_test_signaled_rcu(bo->base.resv, true) ||
+	    !dma_resv_trylock(bo->base.resv)) {
 		/* The BO is not idle, resurrect it for delayed destroy */
 		ttm_bo_flush_all_fences(bo);
 		bo->deleted = true;
@@ -621,6 +622,7 @@ static void ttm_bo_release(struct kref *kref)
 	spin_unlock(&ttm_bo_glob.lru_lock);
 
 	ttm_bo_cleanup_memtype_use(bo);
+	dma_resv_unlock(bo->base.resv);
 
 	BUG_ON(bo->mem.mm_node != NULL);
 	atomic_dec(&ttm_bo_glob.bo_count);
