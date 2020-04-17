@@ -1410,7 +1410,8 @@ static int decode_sections(struct objtool_file *file)
 static bool is_fentry_call(struct instruction *insn)
 {
 	if (insn->type == INSN_CALL &&
-	    insn->call_dest->type == STT_NOTYPE &&
+	    (insn->call_dest->type == STT_NOTYPE ||
+	     insn->call_dest->type == STT_FUNC) &&
 	    !strcmp(insn->call_dest->name, "__fentry__"))
 		return true;
 
