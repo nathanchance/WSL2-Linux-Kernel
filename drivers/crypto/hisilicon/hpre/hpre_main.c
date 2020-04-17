@@ -195,6 +195,15 @@ static u32 hpre_pf_q_num = HPRE_PF_DEF_Q_NUM;
 module_param_cb(hpre_pf_q_num, &hpre_pf_q_num_ops, &hpre_pf_q_num, 0444);
 MODULE_PARM_DESC(hpre_pf_q_num, "Number of queues in PF of CS(1-1024)");
 
+static const struct kernel_param_ops vfs_num_ops = {
+	.set = vfs_num_set,
+	.get = param_get_int,
+};
+
+static u32 vfs_num;
+module_param_cb(vfs_num, &vfs_num_ops, &vfs_num, 0444);
+MODULE_PARM_DESC(vfs_num, "Number of VFs to enable(1-63), 0(default)");
+
 struct hisi_qp *hpre_create_qp(void)
 {
 	int node = cpu_to_node(smp_processor_id());
@@ -354,9 +363,7 @@ static u32 hpre_current_qm_read(struct hpre_debugfs_file *file)
 static int hpre_current_qm_write(struct hpre_debugfs_file *file, u32 val)
 {
 	struct hisi_qm *qm = hpre_file_to_qm(file);
-	struct hpre_debug *debug = file->debug;
-	struct hpre *hpre = container_of(debug, struct hpre, debug);
-	u32 num_vfs = hpre->num_vfs;
+	u32 num_vfs = qm->vfs_num;
 	u32 vfq_num, tmp;
 
 
@@ -779,7 +786,17 @@ static int hpre_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		pci_err(pdev, "fail to register algs to crypto!\n");
 		goto err_with_qm_start;
 	}
+
+	if (qm->fun_type == QM_HW_PF && vfs_num) {
+		ret = hisi_qm_sriov_enable(pdev, vfs_num);
+		if (ret < 0)
+			goto err_with_crypto_register;
+	}
+
 	return 0;
+
+err_with_crypto_register:
+	hpre_algs_unregister();
 
 err_with_qm_start:
 	hisi_qm_del_from_list(qm, &hpre_devices);
@@ -794,107 +811,6 @@ err_with_qm_init:
 	return ret;
 }
 
-static int hpre_vf_q_assign(struct hpre *hpre, int num_vfs)
-{
-	struct hisi_qm *qm = &hpre->qm;
-	u32 qp_num = qm->qp_num;
-	int q_num, remain_q_num, i;
-	u32 q_base = qp_num;
-	int ret;
-
-	if (!num_vfs)
-		return -EINVAL;
-
-	remain_q_num = qm->ctrl_qp_num - qp_num;
-
-	/* If remaining queues are not enough, return error. */
-	if (remain_q_num < num_vfs)
-		return -EINVAL;
-
-	q_num = remain_q_num / num_vfs;
-	for (i = 1; i <= num_vfs; i++) {
-		if (i == num_vfs)
-			q_num += remain_q_num % num_vfs;
-		ret = hisi_qm_set_vft(qm, i, q_base, (u32)q_num);
-		if (ret)
-			return ret;
-		q_base += q_num;
-	}
-
-	return 0;
-}
-
-static int hpre_clear_vft_config(struct hpre *hpre)
-{
-	struct hisi_qm *qm = &hpre->qm;
-	u32 num_vfs = hpre->num_vfs;
-	int ret;
-	u32 i;
-
-	for (i = 1; i <= num_vfs; i++) {
-		ret = hisi_qm_set_vft(qm, i, 0, 0);
-		if (ret)
-			return ret;
-	}
-	hpre->num_vfs = 0;
-
-	return 0;
-}
-
-static int hpre_sriov_enable(struct pci_dev *pdev, int max_vfs)
-{
-	struct hpre *hpre = pci_get_drvdata(pdev);
-	int pre_existing_vfs, num_vfs, ret;
-
-	pre_existing_vfs = pci_num_vf(pdev);
-	if (pre_existing_vfs) {
-		pci_err(pdev,
-			"Can't enable VF. Please disable pre-enabled VFs!\n");
-		return 0;
-	}
-
-	num_vfs = min_t(int, max_vfs, HPRE_VF_NUM);
-	ret = hpre_vf_q_assign(hpre, num_vfs);
-	if (ret) {
-		pci_err(pdev, "Can't assign queues for VF!\n");
-		return ret;
-	}
-
-	hpre->num_vfs = num_vfs;
-
-	ret = pci_enable_sriov(pdev, num_vfs);
-	if (ret) {
-		pci_err(pdev, "Can't enable VF!\n");
-		hpre_clear_vft_config(hpre);
-		return ret;
-	}
-
-	return num_vfs;
-}
-
-static int hpre_sriov_disable(struct pci_dev *pdev)
-{
-	struct hpre *hpre = pci_get_drvdata(pdev);
-
-	if (pci_vfs_assigned(pdev)) {
-		pci_err(pdev, "Failed to disable VFs while VFs are assigned!\n");
-		return -EPERM;
-	}
-
-	/* remove in hpre_pci_driver will be called to free VF resources */
-	pci_disable_sriov(pdev);
-
-	return hpre_clear_vft_config(hpre);
-}
-
-static int hpre_sriov_configure(struct pci_dev *pdev, int num_vfs)
-{
-	if (num_vfs)
-		return hpre_sriov_enable(pdev, num_vfs);
-	else
-		return hpre_sriov_disable(pdev);
-}
-
 static void hpre_remove(struct pci_dev *pdev)
 {
 	struct hpre *hpre = pci_get_drvdata(pdev);
@@ -903,8 +819,8 @@ static void hpre_remove(struct pci_dev *pdev)
 
 	hpre_algs_unregister();
 	hisi_qm_del_from_list(qm, &hpre_devices);
-	if (qm->fun_type == QM_HW_PF && hpre->num_vfs != 0) {
-		ret = hpre_sriov_disable(pdev);
+	if (qm->fun_type == QM_HW_PF && qm->vfs_num) {
+		ret = hisi_qm_sriov_disable(pdev);
 		if (ret) {
 			pci_err(pdev, "Disable SRIOV fail!\n");
 			return;
@@ -931,7 +847,7 @@ static struct pci_driver hpre_pci_driver = {
 	.id_table		= hpre_dev_ids,
 	.probe			= hpre_probe,
 	.remove			= hpre_remove,
-	.sriov_configure	= hpre_sriov_configure,
+	.sriov_configure	= hisi_qm_sriov_configure,
 	.err_handler		= &hpre_err_handler,
 };
 
