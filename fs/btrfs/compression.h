@@ -7,6 +7,7 @@
 #define BTRFS_COMPRESSION_H
 
 #include <linux/sizes.h>
+#include <linux/btrfs_tree.h>
 
 /*
  * We want to make sure that amount of RAM required to uncompress an extent is
@@ -99,14 +100,6 @@ blk_status_t btrfs_submit_compressed_read(struct inode *inode, struct bio *bio,
 				 int mirror_num, unsigned long bio_flags);
 
 unsigned int btrfs_compress_str2level(unsigned int type, const char *str);
-
-enum btrfs_compression_type {
-	BTRFS_COMPRESS_NONE  = 0,
-	BTRFS_COMPRESS_ZLIB  = 1,
-	BTRFS_COMPRESS_LZO   = 2,
-	BTRFS_COMPRESS_ZSTD  = 3,
-	BTRFS_NR_COMPRESS_TYPES = 4,
-};
 
 struct workspace_manager {
 	struct list_head idle_ws;
