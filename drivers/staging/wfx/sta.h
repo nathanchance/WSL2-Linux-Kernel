@@ -28,12 +28,6 @@ struct wfx_hif_event {
 	struct hif_ind_event evt;
 };
 
-struct wfx_grp_addr_table {
-	bool enable;
-	int num_addresses;
-	u8 address_list[8][ETH_ALEN];
-};
-
 struct wfx_sta_priv {
 	int link_id;
 	int vif_id;
@@ -54,8 +48,10 @@ void wfx_configure_filter(struct ieee80211_hw *hw, unsigned int changed_flags,
 
 int wfx_add_interface(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
 void wfx_remove_interface(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
-void wfx_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-	       u32 queues, bool drop);
+int wfx_start_ap(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
+void wfx_stop_ap(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
+int wfx_join_ibss(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
+void wfx_leave_ibss(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
 int wfx_conf_tx(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		u16 queue, const struct ieee80211_tx_queue_params *params);
 void wfx_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
@@ -86,8 +82,6 @@ void wfx_suspend_resume_mc(struct wfx_vif *wvif, enum sta_notify_cmd cmd);
 
 // Other Helpers
 void wfx_cqm_bssloss_sm(struct wfx_vif *wvif, int init, int good, int bad);
-void wfx_update_filtering(struct wfx_vif *wvif);
-int wfx_fwd_probe_req(struct wfx_vif *wvif, bool enable);
 u32 wfx_rate_mask_to_hw(struct wfx_dev *wdev, u32 rates);
 
 #endif /* WFX_STA_H */

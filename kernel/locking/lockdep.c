@@ -489,7 +489,7 @@ struct lock_trace {
 	struct hlist_node	hash_entry;
 	u32			hash;
 	u32			nr_entries;
-	unsigned long		entries[0] __aligned(sizeof(unsigned long));
+	unsigned long		entries[] __aligned(sizeof(unsigned long));
 };
 #define LOCK_TRACE_SIZE_IN_LONGS				\
 	(sizeof(struct lock_trace) / sizeof(unsigned long))
@@ -4399,7 +4399,7 @@ static void print_unlock_imbalance_bug(struct task_struct *curr,
 		curr->comm, task_pid_nr(curr));
 	print_lockdep_cache(lock);
 	pr_cont(") at:\n");
-	print_ip_sym(ip);
+	print_ip_sym(KERN_WARNING, ip);
 	pr_warn("but there are no more locks to release!\n");
 	pr_warn("\nother info that might help us debug this:\n");
 	lockdep_print_held_locks(curr);
@@ -5050,7 +5050,7 @@ static void print_lock_contention_bug(struct task_struct *curr,
 		curr->comm, task_pid_nr(curr));
 	print_lockdep_cache(lock);
 	pr_cont(") at:\n");
-	print_ip_sym(ip);
+	print_ip_sym(KERN_WARNING, ip);
 	pr_warn("but there are no locks held!\n");
 	pr_warn("\nother info that might help us debug this:\n");
 	lockdep_print_held_locks(curr);

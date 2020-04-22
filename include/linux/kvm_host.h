@@ -409,7 +409,7 @@ struct kvm_irq_routing_table {
 	 * Array indexed by gsi. Each entry contains list of irq chips
 	 * the gsi is connected to.
 	 */
-	struct hlist_head map[0];
+	struct hlist_head map[];
 };
 #endif
 
@@ -866,7 +866,7 @@ int kvm_arch_vcpu_ioctl_set_mpstate(struct kvm_vcpu *vcpu,
 				    struct kvm_mp_state *mp_state);
 int kvm_arch_vcpu_ioctl_set_guest_debug(struct kvm_vcpu *vcpu,
 					struct kvm_guest_debug *dbg);
-int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *kvm_run);
+int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu);
 
 int kvm_arch_init(void *opaque);
 void kvm_arch_exit(void);
@@ -1048,7 +1048,7 @@ search_memslots(struct kvm_memslots *slots, gfn_t gfn)
 			start = slot + 1;
 	}
 
-	if (gfn >= memslots[start].base_gfn &&
+	if (start < slots->used_slots && gfn >= memslots[start].base_gfn &&
 	    gfn < memslots[start].base_gfn + memslots[start].npages) {
 		atomic_set(&slots->lru_slot, start);
 		return &memslots[start];
@@ -1129,6 +1129,11 @@ struct kvm_stats_debugfs_item {
 
 #define KVM_DBGFS_GET_MODE(dbgfs_item)                                         \
 	((dbgfs_item)->mode ? (dbgfs_item)->mode : 0644)
+
+#define VM_STAT(n, x, ...) 							\
+	{ n, offsetof(struct kvm, stat.x), KVM_STAT_VM, ## __VA_ARGS__ }
+#define VCPU_STAT(n, x, ...)							\
+	{ n, offsetof(struct kvm_vcpu, stat.x), KVM_STAT_VCPU, ## __VA_ARGS__ }
 
 extern struct kvm_stats_debugfs_item debugfs_entries[];
 extern struct dentry *kvm_debugfs_dir;
@@ -1351,6 +1356,12 @@ static inline void kvm_vcpu_set_dy_eligible(struct kvm_vcpu *vcpu, bool val)
 {
 }
 #endif /* CONFIG_HAVE_KVM_CPU_RELAX_INTERCEPT */
+
+static inline bool kvm_is_visible_memslot(struct kvm_memory_slot *memslot)
+{
+	return (memslot && memslot->id < KVM_USER_MEM_SLOTS &&
+		!(memslot->flags & KVM_MEMSLOT_INVALID));
+}
 
 struct kvm_vcpu *kvm_get_running_vcpu(void);
 struct kvm_vcpu * __percpu *kvm_get_running_vcpus(void);

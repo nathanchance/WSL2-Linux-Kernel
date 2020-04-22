@@ -67,7 +67,7 @@ struct debug_htt_stats_req {
 	u8 peer_addr[ETH_ALEN];
 	struct completion cmpln;
 	u32 buf_len;
-	u8 buf[0];
+	u8 buf[];
 };
 
 struct ath_pktlog_hdr {
@@ -77,7 +77,7 @@ struct ath_pktlog_hdr {
 	u16 size;
 	u32 timestamp;
 	u32 type_specific_data;
-	u8 payload[0];
+	u8 payload[];
 };
 
 #define ATH11K_HTT_STATS_BUF_SIZE (1024 * 512)
@@ -110,6 +110,12 @@ enum ath11k_pktlog_enum {
 	ATH11K_PKTLOG_TYPE_RX_STATBUF   = 22,
 	ATH11K_PKTLOG_TYPE_PPDU_STATS   = 23,
 	ATH11K_PKTLOG_TYPE_LITE_RX      = 24,
+};
+
+enum ath11k_dbg_aggr_mode {
+	ATH11K_DBG_AGGR_MODE_AUTO,
+	ATH11K_DBG_AGGR_MODE_MANUAL,
+	ATH11K_DBG_AGGR_MODE_MAX,
 };
 
 __printf(2, 3) void ath11k_info(struct ath11k_base *ab, const char *fmt, ...);

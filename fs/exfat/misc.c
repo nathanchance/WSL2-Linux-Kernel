@@ -32,7 +32,7 @@ void __exfat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 		va_start(args, fmt);
 		vaf.fmt = fmt;
 		vaf.va = &args;
-		exfat_msg(sb, KERN_ERR, "error, %pV\n", &vaf);
+		exfat_err(sb, "error, %pV", &vaf);
 		va_end(args);
 	}
 
@@ -41,7 +41,7 @@ void __exfat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 			sb->s_id);
 	} else if (opts->errors == EXFAT_ERRORS_RO && !sb_rdonly(sb)) {
 		sb->s_flags |= SB_RDONLY;
-		exfat_msg(sb, KERN_ERR, "Filesystem has been set read-only");
+		exfat_err(sb, "Filesystem has been set read-only");
 	}
 }
 
@@ -88,7 +88,8 @@ void exfat_get_entry_time(struct exfat_sb_info *sbi, struct timespec64 *ts,
 	if (time_ms) {
 		ts->tv_sec += time_ms / 100;
 		ts->tv_nsec = (time_ms % 100) * 10 * NSEC_PER_MSEC;
-	}
+	} else
+		ts->tv_nsec = 0;
 
 	if (tz & EXFAT_TZ_VALID)
 		/* Adjust timezone to UTC0. */
@@ -122,6 +123,17 @@ void exfat_set_entry_time(struct exfat_sb_info *sbi, struct timespec64 *ts,
 	 * to indicate that local time and UTC are the same.
 	 */
 	*tz = EXFAT_TZ_VALID;
+}
+
+/*
+ * The timestamp for access_time has double seconds granularity.
+ * (There is no 10msIncrement field for access_time unlike create/modify_time)
+ * atime also has only a 2-second resolution.
+ */
+void exfat_truncate_atime(struct timespec64 *ts)
+{
+	ts->tv_sec = round_down(ts->tv_sec, 2);
+	ts->tv_nsec = 0;
 }
 
 unsigned short exfat_calc_chksum_2byte(void *data, int len,

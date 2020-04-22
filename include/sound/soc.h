@@ -790,6 +790,9 @@ struct snd_soc_dai_link {
 	const struct snd_soc_pcm_stream *params;
 	unsigned int num_params;
 
+	struct snd_soc_dapm_widget *playback_widget;
+	struct snd_soc_dapm_widget *capture_widget;
+
 	unsigned int dai_fmt;           /* format to set on init */
 
 	enum snd_soc_dpcm_trigger trigger[2]; /* trigger type for DPCM */
@@ -1167,7 +1170,7 @@ struct snd_soc_pcm_runtime {
 	unsigned int fe_compr:1; /* for Dynamic PCM */
 
 	int num_components;
-	struct snd_soc_component *components[0]; /* CPU/Codec/Platform */
+	struct snd_soc_component *components[]; /* CPU/Codec/Platform */
 };
 /* see soc_new_pcm_runtime()  */
 #define asoc_rtd_to_cpu(rtd, n)   (rtd)->dais[n]

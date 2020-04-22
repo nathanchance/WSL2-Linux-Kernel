@@ -106,7 +106,7 @@ config AXI_DMAC
 	select REGMAP_MMIO
 	help
 	  Enable support for the Analog Devices AXI-DMAC peripheral. This DMA
-	  controller is often used in Analog Device's reference designs for FPGA
+	  controller is often used in Analog Devices' reference designs for FPGA
 	  platforms.
 
 config BCM_SBA_RAID
@@ -241,7 +241,8 @@ config FSL_RAID
 
 config HISI_DMA
 	tristate "HiSilicon DMA Engine support"
-	depends on ARM64 || (COMPILE_TEST && PCI_MSI)
+	depends on ARM64 || COMPILE_TEST
+	depends on PCI_MSI
 	select DMA_ENGINE
 	select DMA_VIRTUAL_CHANNELS
 	help

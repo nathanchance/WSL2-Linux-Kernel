@@ -126,7 +126,7 @@ static bool oom_cpuset_eligible(struct task_struct *tsk, struct oom_control *oc)
 
 /*
  * The process p may have detached its own ->mm while exiting or through
- * use_mm(), but one or more of its subthreads may still have a valid
+ * kthread_use_mm(), but one or more of its subthreads may still have a valid
  * pointer.  Return p, or any of its subthreads with a valid ->mm, with
  * task_lock() held.
  */
@@ -254,7 +254,7 @@ static enum oom_constraint constrained_alloc(struct oom_control *oc)
 {
 	struct zone *zone;
 	struct zoneref *z;
-	enum zone_type high_zoneidx = gfp_zone(oc->gfp_mask);
+	enum zone_type highest_zoneidx = gfp_zone(oc->gfp_mask);
 	bool cpuset_limited = false;
 	int nid;
 
@@ -294,7 +294,7 @@ static enum oom_constraint constrained_alloc(struct oom_control *oc)
 
 	/* Check this allocation failure is caused by cpuset's wall function */
 	for_each_zone_zonelist_nodemask(zone, z, oc->zonelist,
-			high_zoneidx, oc->nodemask)
+			highest_zoneidx, oc->nodemask)
 		if (!cpuset_zone_allowed(zone, oc->gfp_mask))
 			cpuset_limited = true;
 
@@ -919,8 +919,8 @@ static void __oom_kill_process(struct task_struct *victim, const char *message)
 			continue;
 		}
 		/*
-		 * No use_mm() user needs to read from the userspace so we are
-		 * ok to reap it.
+		 * No kthead_use_mm() user needs to read from the userspace so
+		 * we are ok to reap it.
 		 */
 		if (unlikely(p->flags & PF_KTHREAD))
 			continue;

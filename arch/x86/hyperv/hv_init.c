@@ -73,7 +73,8 @@ static int hv_cpu_init(unsigned int cpu)
 	struct page *pg;
 
 	input_arg = (void **)this_cpu_ptr(hyperv_pcpu_input_arg);
-	pg = alloc_page(GFP_KERNEL);
+	/* hv_cpu_init() can be called with IRQs disabled from hv_resume() */
+	pg = alloc_page(irqs_disabled() ? GFP_ATOMIC : GFP_KERNEL);
 	if (unlikely(!pg))
 		return -ENOMEM;
 	*input_arg = page_address(pg);
@@ -96,8 +97,7 @@ static int hv_cpu_init(unsigned int cpu)
 	 * not be stopped in the case of CPU offlining and the VM will hang.
 	 */
 	if (!*hvp) {
-		*hvp = __vmalloc(PAGE_SIZE, GFP_KERNEL | __GFP_ZERO,
-				 PAGE_KERNEL);
+		*hvp = __vmalloc(PAGE_SIZE, GFP_KERNEL | __GFP_ZERO);
 	}
 
 	if (*hvp) {
@@ -254,6 +254,7 @@ static int __init hv_pci_init(void)
 static int hv_suspend(void)
 {
 	union hv_x64_msr_hypercall_contents hypercall_msr;
+	int ret;
 
 	/*
 	 * Reset the hypercall page as it is going to be invalidated
@@ -270,12 +271,17 @@ static int hv_suspend(void)
 	hypercall_msr.enable = 0;
 	wrmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
 
-	return 0;
+	ret = hv_cpu_die(0);
+	return ret;
 }
 
 static void hv_resume(void)
 {
 	union hv_x64_msr_hypercall_contents hypercall_msr;
+	int ret;
+
+	ret = hv_cpu_init(0);
+	WARN_ON(ret);
 
 	/* Re-enable the hypercall page */
 	rdmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
@@ -288,6 +294,7 @@ static void hv_resume(void)
 	hv_hypercall_pg_saved = NULL;
 }
 
+/* Note: when the ops are called, only CPU0 is online and IRQs are disabled. */
 static struct syscore_ops hv_syscore_ops = {
 	.suspend	= hv_suspend,
 	.resume		= hv_resume,
@@ -356,7 +363,7 @@ void __init hyperv_init(void)
 	guest_id = generate_guest_id(0, LINUX_VERSION_CODE, 0);
 	wrmsrl(HV_X64_MSR_GUEST_OS_ID, guest_id);
 
-	hv_hypercall_pg  = __vmalloc(PAGE_SIZE, GFP_KERNEL, PAGE_KERNEL_RX);
+	hv_hypercall_pg = vmalloc_exec(PAGE_SIZE);
 	if (hv_hypercall_pg == NULL) {
 		wrmsrl(HV_X64_MSR_GUEST_OS_ID, 0);
 		goto remove_cpuhp_state;

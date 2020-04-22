@@ -42,6 +42,10 @@
 #include "internal.h"
 #include "shuffle.h"
 
+#ifndef MEMORY_HOTPLUG_RES_NAME
+#define MEMORY_HOTPLUG_RES_NAME "System RAM"
+#endif
+
 /*
  * online_page_callback contains pointer to current page onlining function.
  * Initially it is generic_online_page(). If it is required it could be
@@ -102,7 +106,7 @@ static struct resource *register_memory_resource(u64 start, u64 size)
 {
 	struct resource *res;
 	unsigned long flags =  IORESOURCE_SYSTEM_RAM | IORESOURCE_BUSY;
-	char *resource_name = "System RAM";
+	char *resource_name = MEMORY_HOTPLUG_RES_NAME;
 
 	/*
 	 * Make sure value parsed from 'mem=' only restricts memory adding
@@ -879,13 +883,13 @@ static pg_data_t __ref *hotadd_new_pgdat(int nid, u64 start)
 	} else {
 		int cpu;
 		/*
-		 * Reset the nr_zones, order and classzone_idx before reuse.
-		 * Note that kswapd will init kswapd_classzone_idx properly
+		 * Reset the nr_zones, order and highest_zoneidx before reuse.
+		 * Note that kswapd will init kswapd_highest_zoneidx properly
 		 * when it starts in the near future.
 		 */
 		pgdat->nr_zones = 0;
 		pgdat->kswapd_order = 0;
-		pgdat->kswapd_classzone_idx = 0;
+		pgdat->kswapd_highest_zoneidx = 0;
 		for_each_online_cpu(cpu) {
 			struct per_cpu_nodestat *p;
 
@@ -1017,6 +1021,11 @@ int __ref add_memory_resource(int nid, struct resource *res)
 	if (ret)
 		return ret;
 
+	if (!node_possible(nid)) {
+		WARN(1, "node %d was absent from the node_possible_map\n", nid);
+		return -EINVAL;
+	}
+
 	mem_hotplug_begin();
 
 	/*
@@ -1108,81 +1117,6 @@ int add_memory(int nid, u64 start, u64 size)
 EXPORT_SYMBOL_GPL(add_memory);
 
 #ifdef CONFIG_MEMORY_HOTREMOVE
-/*
- * A free page on the buddy free lists (not the per-cpu lists) has PageBuddy
- * set and the size of the free page is given by page_order(). Using this,
- * the function determines if the pageblock contains only free pages.
- * Due to buddy contraints, a free page at least the size of a pageblock will
- * be located at the start of the pageblock
- */
-static inline int pageblock_free(struct page *page)
-{
-	return PageBuddy(page) && page_order(page) >= pageblock_order;
-}
-
-/* Return the pfn of the start of the next active pageblock after a given pfn */
-static unsigned long next_active_pageblock(unsigned long pfn)
-{
-	struct page *page = pfn_to_page(pfn);
-
-	/* Ensure the starting page is pageblock-aligned */
-	BUG_ON(pfn & (pageblock_nr_pages - 1));
-
-	/* If the entire pageblock is free, move to the end of free page */
-	if (pageblock_free(page)) {
-		int order;
-		/* be careful. we don't have locks, page_order can be changed.*/
-		order = page_order(page);
-		if ((order < MAX_ORDER) && (order >= pageblock_order))
-			return pfn + (1 << order);
-	}
-
-	return pfn + pageblock_nr_pages;
-}
-
-static bool is_pageblock_removable_nolock(unsigned long pfn)
-{
-	struct page *page = pfn_to_page(pfn);
-	struct zone *zone;
-
-	/*
-	 * We have to be careful here because we are iterating over memory
-	 * sections which are not zone aware so we might end up outside of
-	 * the zone but still within the section.
-	 * We have to take care about the node as well. If the node is offline
-	 * its NODE_DATA will be NULL - see page_zone.
-	 */
-	if (!node_online(page_to_nid(page)))
-		return false;
-
-	zone = page_zone(page);
-	pfn = page_to_pfn(page);
-	if (!zone_spans_pfn(zone, pfn))
-		return false;
-
-	return !has_unmovable_pages(zone, page, MIGRATE_MOVABLE,
-				    MEMORY_OFFLINE);
-}
-
-/* Checks if this range of memory is likely to be hot-removable. */
-bool is_mem_section_removable(unsigned long start_pfn, unsigned long nr_pages)
-{
-	unsigned long end_pfn, pfn;
-
-	end_pfn = min(start_pfn + nr_pages,
-			zone_end_pfn(page_zone(pfn_to_page(start_pfn))));
-
-	/* Check the starting page of each pageblock within the range */
-	for (pfn = start_pfn; pfn < end_pfn; pfn = next_active_pageblock(pfn)) {
-		if (!is_pageblock_removable_nolock(pfn))
-			return false;
-		cond_resched();
-	}
-
-	/* All pageblocks in the memory block are likely to be hot-removable */
-	return true;
-}
-
 /*
  * Confirm all pages in a range [start, end) belong to the same zone (skipping
  * memory holes). When true, return the zone.
@@ -1360,7 +1294,7 @@ offline_isolated_pages_cb(unsigned long start, unsigned long nr_pages,
 }
 
 /*
- * Check all pages in range, recoreded as memory resource, are isolated.
+ * Check all pages in range, recorded as memory resource, are isolated.
  */
 static int
 check_pages_isolated_cb(unsigned long start_pfn, unsigned long nr_pages,
@@ -1372,11 +1306,7 @@ check_pages_isolated_cb(unsigned long start_pfn, unsigned long nr_pages,
 
 static int __init cmdline_parse_movable_node(char *p)
 {
-#ifdef CONFIG_HAVE_MEMBLOCK_NODE_MAP
 	movable_node_enabled = true;
-#else
-	pr_warn("movable_node parameter depends on CONFIG_HAVE_MEMBLOCK_NODE_MAP to work properly\n");
-#endif
 	return 0;
 }
 early_param("movable_node", cmdline_parse_movable_node);

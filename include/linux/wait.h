@@ -544,7 +544,7 @@ do {										\
 ({										\
 	int __ret = 0;								\
 	might_sleep();								\
-	if (!(condition))							\
+	if (!(condition) && (timeout))						\
 		__ret = __wait_event_hrtimeout(wq_head, condition, timeout,	\
 					       TASK_UNINTERRUPTIBLE);		\
 	__ret;									\
@@ -570,7 +570,7 @@ do {										\
 ({										\
 	long __ret = 0;								\
 	might_sleep();								\
-	if (!(condition))							\
+	if (!(condition) && (timeout))						\
 		__ret = __wait_event_hrtimeout(wq, condition, timeout,		\
 					       TASK_INTERRUPTIBLE);		\
 	__ret;									\
@@ -1148,5 +1148,7 @@ int autoremove_wake_function(struct wait_queue_entry *wq_entry, unsigned mode, i
 		INIT_LIST_HEAD(&(wait)->entry);					\
 		(wait)->flags = 0;						\
 	} while (0)
+
+bool try_invoke_on_locked_down_task(struct task_struct *p, bool (*func)(struct task_struct *t, void *arg), void *arg);
 
 #endif /* _LINUX_WAIT_H */

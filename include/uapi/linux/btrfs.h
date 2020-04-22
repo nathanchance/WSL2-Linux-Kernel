@@ -21,10 +21,10 @@
 #define _UAPI_LINUX_BTRFS_H
 #include <linux/types.h>
 #include <linux/ioctl.h>
+#include <linux/btrfs_tree.h>
 
 #define BTRFS_IOCTL_MAGIC 0x94
 #define BTRFS_VOL_NAME_MAX 255
-#define BTRFS_LABEL_SIZE 256
 
 /* this should be 4k */
 #define BTRFS_PATH_NAME_MAX 4087
@@ -53,23 +53,7 @@ struct btrfs_ioctl_vol_args {
 			BTRFS_DEVICE_SPEC_BY_ID |	\
 			BTRFS_SUBVOL_SPEC_BY_ID)
 
-#define BTRFS_FSID_SIZE 16
-#define BTRFS_UUID_SIZE 16
 #define BTRFS_UUID_UNPARSED_SIZE	37
-
-/*
- * flags definition for qgroup limits
- *
- * Used by:
- * struct btrfs_qgroup_limit.flags
- * struct btrfs_qgroup_limit_item.flags
- */
-#define BTRFS_QGROUP_LIMIT_MAX_RFER	(1ULL << 0)
-#define BTRFS_QGROUP_LIMIT_MAX_EXCL	(1ULL << 1)
-#define BTRFS_QGROUP_LIMIT_RSV_RFER	(1ULL << 2)
-#define BTRFS_QGROUP_LIMIT_RSV_EXCL	(1ULL << 3)
-#define BTRFS_QGROUP_LIMIT_RFER_CMPR	(1ULL << 4)
-#define BTRFS_QGROUP_LIMIT_EXCL_CMPR	(1ULL << 5)
 
 struct btrfs_qgroup_limit {
 	__u64	flags;
@@ -253,43 +237,6 @@ struct btrfs_ioctl_fs_info_args {
 	__u32 reserved32;
 	__u64 reserved[122];			/* pad to 1k */
 };
-
-/*
- * feature flags
- *
- * Used by:
- * struct btrfs_ioctl_feature_flags
- */
-#define BTRFS_FEATURE_COMPAT_RO_FREE_SPACE_TREE		(1ULL << 0)
-/*
- * Older kernels (< 4.9) on big-endian systems produced broken free space tree
- * bitmaps, and btrfs-progs also used to corrupt the free space tree (versions
- * < 4.7.3).  If this bit is clear, then the free space tree cannot be trusted.
- * btrfs-progs can also intentionally clear this bit to ask the kernel to
- * rebuild the free space tree, however this might not work on older kernels
- * that do not know about this bit. If not sure, clear the cache manually on
- * first mount when booting older kernel versions.
- */
-#define BTRFS_FEATURE_COMPAT_RO_FREE_SPACE_TREE_VALID	(1ULL << 1)
-
-#define BTRFS_FEATURE_INCOMPAT_MIXED_BACKREF	(1ULL << 0)
-#define BTRFS_FEATURE_INCOMPAT_DEFAULT_SUBVOL	(1ULL << 1)
-#define BTRFS_FEATURE_INCOMPAT_MIXED_GROUPS	(1ULL << 2)
-#define BTRFS_FEATURE_INCOMPAT_COMPRESS_LZO	(1ULL << 3)
-#define BTRFS_FEATURE_INCOMPAT_COMPRESS_ZSTD	(1ULL << 4)
-
-/*
- * older kernels tried to do bigger metadata blocks, but the
- * code was pretty buggy.  Lets not let them try anymore.
- */
-#define BTRFS_FEATURE_INCOMPAT_BIG_METADATA	(1ULL << 5)
-
-#define BTRFS_FEATURE_INCOMPAT_EXTENDED_IREF	(1ULL << 6)
-#define BTRFS_FEATURE_INCOMPAT_RAID56		(1ULL << 7)
-#define BTRFS_FEATURE_INCOMPAT_SKINNY_METADATA	(1ULL << 8)
-#define BTRFS_FEATURE_INCOMPAT_NO_HOLES		(1ULL << 9)
-#define BTRFS_FEATURE_INCOMPAT_METADATA_UUID	(1ULL << 10)
-#define BTRFS_FEATURE_INCOMPAT_RAID1C34		(1ULL << 11)
 
 struct btrfs_ioctl_feature_flags {
 	__u64 compat_flags;
@@ -654,25 +601,6 @@ struct btrfs_ioctl_logical_ino_args {
 /* Return every ref to the extent, not just those containing logical block.
  * Requires logical == extent bytenr. */
 #define BTRFS_LOGICAL_INO_ARGS_IGNORE_OFFSET	(1ULL << 0)
-
-enum btrfs_dev_stat_values {
-	/* disk I/O failure stats */
-	BTRFS_DEV_STAT_WRITE_ERRS, /* EIO or EREMOTEIO from lower layers */
-	BTRFS_DEV_STAT_READ_ERRS, /* EIO or EREMOTEIO from lower layers */
-	BTRFS_DEV_STAT_FLUSH_ERRS, /* EIO or EREMOTEIO from lower layers */
-
-	/* stats for indirect indications for I/O failures */
-	BTRFS_DEV_STAT_CORRUPTION_ERRS, /* checksum error, bytenr error or
-					 * contents is illegal: this is an
-					 * indication that the block was damaged
-					 * during read or write, or written to
-					 * wrong location or read from wrong
-					 * location */
-	BTRFS_DEV_STAT_GENERATION_ERRS, /* an indication that blocks have not
-					 * been written */
-
-	BTRFS_DEV_STAT_VALUES_MAX
-};
 
 /* Reset statistics after reading; needs SYS_ADMIN capability */
 #define	BTRFS_DEV_STATS_RESET		(1ULL << 0)
