@@ -34,9 +34,10 @@ struct instruction *find_insn(struct objtool_file *file,
 {
 	struct instruction *insn;
 
-	hash_for_each_possible(file->insn_hash, insn, hash, offset)
+	hash_for_each_possible(file->insn_hash, insn, hash, sec_offset_hash(sec, offset)) {
 		if (insn->sec == sec && insn->offset == offset)
 			return insn;
+	}
 
 	return NULL;
 }
@@ -273,7 +274,7 @@ static int decode_instructions(struct objtool_file *file)
 			if (ret)
 				goto err;
 
-			hash_add(file->insn_hash, &insn->hash, insn->offset);
+			hash_add(file->insn_hash, &insn->hash, sec_offset_hash(sec, insn->offset));
 			list_add_tail(&insn->list, &file->insn_list);
 			nr_insns++;
 		}
@@ -303,6 +304,19 @@ err:
 	return ret;
 }
 
+static struct instruction *find_last_insn(struct objtool_file *file,
+					  struct section *sec)
+{
+	struct instruction *insn = NULL;
+	unsigned int offset;
+	unsigned int end = (sec->len > 10) ? sec->len - 10 : 0;
+
+	for (offset = sec->len - 1; offset >= end && !insn; offset--)
+		insn = find_insn(file, sec, offset);
+
+	return insn;
+}
+
 /*
  * Mark "ud2" instructions and manually annotated dead ends.
  */
@@ -311,7 +325,6 @@ static int add_dead_ends(struct objtool_file *file)
 	struct section *sec;
 	struct rela *rela;
 	struct instruction *insn;
-	bool found;
 
 	/*
 	 * By default, "ud2" is a dead end unless otherwise annotated, because
@@ -337,15 +350,8 @@ static int add_dead_ends(struct objtool_file *file)
 		if (insn)
 			insn = list_prev_entry(insn, list);
 		else if (rela->addend == rela->sym->sec->len) {
-			found = false;
-			list_for_each_entry_reverse(insn, &file->insn_list, list) {
-				if (insn->sec == rela->sym->sec) {
-					found = true;
-					break;
-				}
-			}
-
-			if (!found) {
+			insn = find_last_insn(file, rela->sym->sec);
+			if (!insn) {
 				WARN("can't find unreachable insn at %s+0x%x",
 				     rela->sym->sec->name, rela->addend);
 				return -1;
@@ -379,15 +385,8 @@ reachable:
 		if (insn)
 			insn = list_prev_entry(insn, list);
 		else if (rela->addend == rela->sym->sec->len) {
-			found = false;
-			list_for_each_entry_reverse(insn, &file->insn_list, list) {
-				if (insn->sec == rela->sym->sec) {
-					found = true;
-					break;
-				}
-			}
-
-			if (!found) {
+			insn = find_last_insn(file, rela->sym->sec);
+			if (!insn) {
 				WARN("can't find reachable insn at %s+0x%x",
 				     rela->sym->sec->name, rela->addend);
 				return -1;
