@@ -38,7 +38,7 @@ static bool flush_submission(struct intel_gt *gt)
 	for_each_engine(engine, gt, id) {
 		intel_engine_flush_submission(engine);
 		active |= flush_work(&engine->retire_work);
-		active |= flush_work(&engine->wakeref.work);
+		active |= flush_delayed_work(&engine->wakeref.work);
 	}
 
 	return active;
@@ -162,7 +162,7 @@ long intel_gt_retire_requests_timeout(struct intel_gt *gt, long timeout)
 			}
 		}
 
-		if (!retire_requests(tl) || flush_submission(gt))
+		if (!retire_requests(tl))
 			active_count++;
 		mutex_unlock(&tl->mutex);
 
@@ -184,6 +184,9 @@ out_active:	spin_lock(&timelines->lock);
 
 	list_for_each_entry_safe(tl, tn, &free, link)
 		__intel_timeline_free(&tl->kref);
+
+	if (flush_submission(gt)) /* Wait, there's more! */
+		active_count++;
 
 	return active_count ? timeout : 0;
 }

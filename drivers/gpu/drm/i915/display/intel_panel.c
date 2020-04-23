@@ -287,7 +287,7 @@ centre_vertically(struct drm_display_mode *adjusted_mode,
 	adjusted_mode->crtc_vsync_end = adjusted_mode->crtc_vsync_start + sync_width;
 }
 
-static inline u32 panel_fitter_scaling(u32 source, u32 target)
+static u32 panel_fitter_scaling(u32 source, u32 target)
 {
 	/*
 	 * Floating point operation is not supported. So the FACTOR
@@ -484,8 +484,8 @@ static u32 scale(u32 source_val,
 }
 
 /* Scale user_level in range [0..user_max] to [hw_min..hw_max]. */
-static inline u32 scale_user_to_hw(struct intel_connector *connector,
-				   u32 user_level, u32 user_max)
+static u32 scale_user_to_hw(struct intel_connector *connector,
+			    u32 user_level, u32 user_max)
 {
 	struct intel_panel *panel = &connector->panel;
 
@@ -495,8 +495,8 @@ static inline u32 scale_user_to_hw(struct intel_connector *connector,
 
 /* Scale user_level in range [0..user_max] to [0..hw_max], clamping the result
  * to [hw_min..hw_max]. */
-static inline u32 clamp_user_to_hw(struct intel_connector *connector,
-				   u32 user_level, u32 user_max)
+static u32 clamp_user_to_hw(struct intel_connector *connector,
+			    u32 user_level, u32 user_max)
 {
 	struct intel_panel *panel = &connector->panel;
 	u32 hw_level;
@@ -508,8 +508,8 @@ static inline u32 clamp_user_to_hw(struct intel_connector *connector,
 }
 
 /* Scale hw_level in range [hw_min..hw_max] to [0..user_max]. */
-static inline u32 scale_hw_to_user(struct intel_connector *connector,
-				   u32 hw_level, u32 user_max)
+static u32 scale_hw_to_user(struct intel_connector *connector,
+			    u32 hw_level, u32 user_max)
 {
 	struct intel_panel *panel = &connector->panel;
 
@@ -684,9 +684,10 @@ static void
 intel_panel_actually_set_backlight(const struct drm_connector_state *conn_state, u32 level)
 {
 	struct intel_connector *connector = to_intel_connector(conn_state->connector);
+	struct drm_i915_private *i915 = to_i915(connector->base.dev);
 	struct intel_panel *panel = &connector->panel;
 
-	DRM_DEBUG_DRIVER("set backlight PWM = %d\n", level);
+	drm_dbg_kms(&i915->drm, "set backlight PWM = %d\n", level);
 
 	level = intel_panel_compute_brightness(connector, level);
 	panel->backlight.set(conn_state, level);
@@ -867,8 +868,8 @@ void intel_panel_disable_backlight(const struct drm_connector_state *old_conn_st
 	 * another client is not activated.
 	 */
 	if (dev_priv->drm.switch_power_state == DRM_SWITCH_POWER_CHANGING) {
-		drm_dbg(&dev_priv->drm,
-			"Skipping backlight disable on vga switch\n");
+		drm_dbg_kms(&dev_priv->drm,
+			    "Skipping backlight disable on vga switch\n");
 		return;
 	}
 
@@ -1244,7 +1245,7 @@ static u32 intel_panel_get_backlight(struct intel_connector *connector)
 
 	mutex_unlock(&dev_priv->backlight_lock);
 
-	drm_dbg(&dev_priv->drm, "get backlight PWM = %d\n", val);
+	drm_dbg_kms(&dev_priv->drm, "get backlight PWM = %d\n", val);
 	return val;
 }
 
@@ -1335,6 +1336,7 @@ static const struct backlight_ops intel_backlight_device_ops = {
 
 int intel_backlight_device_register(struct intel_connector *connector)
 {
+	struct drm_i915_private *i915 = to_i915(connector->base.dev);
 	struct intel_panel *panel = &connector->panel;
 	struct backlight_properties props;
 
@@ -1374,14 +1376,15 @@ int intel_backlight_device_register(struct intel_connector *connector)
 					  &intel_backlight_device_ops, &props);
 
 	if (IS_ERR(panel->backlight.device)) {
-		DRM_ERROR("Failed to register backlight: %ld\n",
-			  PTR_ERR(panel->backlight.device));
+		drm_err(&i915->drm, "Failed to register backlight: %ld\n",
+			PTR_ERR(panel->backlight.device));
 		panel->backlight.device = NULL;
 		return -ENODEV;
 	}
 
-	DRM_DEBUG_KMS("Connector %s backlight sysfs interface registered\n",
-		      connector->base.name);
+	drm_dbg_kms(&i915->drm,
+		    "Connector %s backlight sysfs interface registered\n",
+		    connector->base.name);
 
 	return 0;
 }
@@ -1931,7 +1934,8 @@ static int pwm_setup_backlight(struct intel_connector *connector,
 	return 0;
 }
 
-void intel_panel_update_backlight(struct intel_encoder *encoder,
+void intel_panel_update_backlight(struct intel_atomic_state *state,
+				  struct intel_encoder *encoder,
 				  const struct intel_crtc_state *crtc_state,
 				  const struct drm_connector_state *conn_state)
 {

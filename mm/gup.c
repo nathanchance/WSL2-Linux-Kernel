@@ -1088,7 +1088,7 @@ retry:
 		 * potentially allocating memory.
 		 */
 		if (fatal_signal_pending(current)) {
-			ret = -ERESTARTSYS;
+			ret = -EINTR;
 			goto out;
 		}
 		cond_resched();
@@ -1176,7 +1176,8 @@ static bool vma_permits_fault(struct vm_area_struct *vma,
  * @address:	user address
  * @fault_flags:flags to pass down to handle_mm_fault()
  * @unlocked:	did we unlock the mmap_sem while retrying, maybe NULL if caller
- *		does not allow retry
+ *		does not allow retry. If NULL, the caller must guarantee
+ *		that fault_flags does not contain FAULT_FLAG_ALLOW_RETRY.
  *
  * This is meant to be called in the specific scenario where for locking reasons
  * we try to access user memory in atomic context (within a pagefault_disable()
@@ -2843,9 +2844,9 @@ EXPORT_SYMBOL_GPL(get_user_pages_fast);
  * the arguments here are identical.
  *
  * FOLL_PIN means that the pages must be released via unpin_user_page(). Please
- * see Documentation/vm/pin_user_pages.rst for further details.
+ * see Documentation/core-api/pin_user_pages.rst for further details.
  *
- * This is intended for Case 1 (DIO) in Documentation/vm/pin_user_pages.rst. It
+ * This is intended for Case 1 (DIO) in Documentation/core-api/pin_user_pages.rst. It
  * is NOT intended for Case 2 (RDMA: long-term pins).
  */
 int pin_user_pages_fast(unsigned long start, int nr_pages,
@@ -2883,9 +2884,9 @@ EXPORT_SYMBOL_GPL(pin_user_pages_fast);
  * the arguments here are identical.
  *
  * FOLL_PIN means that the pages must be released via unpin_user_page(). Please
- * see Documentation/vm/pin_user_pages.rst for details.
+ * see Documentation/core-api/pin_user_pages.rst for details.
  *
- * This is intended for Case 1 (DIO) in Documentation/vm/pin_user_pages.rst. It
+ * This is intended for Case 1 (DIO) in Documentation/core-api/pin_user_pages.rst. It
  * is NOT intended for Case 2 (RDMA: long-term pins).
  */
 long pin_user_pages_remote(struct task_struct *tsk, struct mm_struct *mm,
@@ -2919,9 +2920,9 @@ EXPORT_SYMBOL(pin_user_pages_remote);
  * FOLL_PIN is set.
  *
  * FOLL_PIN means that the pages must be released via unpin_user_page(). Please
- * see Documentation/vm/pin_user_pages.rst for details.
+ * see Documentation/core-api/pin_user_pages.rst for details.
  *
- * This is intended for Case 1 (DIO) in Documentation/vm/pin_user_pages.rst. It
+ * This is intended for Case 1 (DIO) in Documentation/core-api/pin_user_pages.rst. It
  * is NOT intended for Case 2 (RDMA: long-term pins).
  */
 long pin_user_pages(unsigned long start, unsigned long nr_pages,

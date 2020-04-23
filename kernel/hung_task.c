@@ -53,8 +53,17 @@ int __read_mostly sysctl_hung_task_warnings = 10;
 static int __read_mostly did_panic;
 static bool hung_task_show_lock;
 static bool hung_task_call_panic;
+static bool hung_task_show_all_bt;
 
 static struct task_struct *watchdog_task;
+
+#ifdef CONFIG_SMP
+/*
+ * Should we dump all CPUs backtraces in a hung task event?
+ * Defaults to 0, can be changed via sysctl.
+ */
+unsigned int __read_mostly sysctl_hung_task_all_cpu_backtrace;
+#endif /* CONFIG_SMP */
 
 /*
  * Should we panic (and reboot, if panic_timeout= is set) when a
@@ -137,8 +146,52 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 			" disables this message.\n");
 		sched_show_task(t);
 		hung_task_show_lock = true;
+
+		if (sysctl_hung_task_all_cpu_backtrace)
+			hung_task_show_all_bt = true;
 	}
 
+	touch_nmi_watchdog();
+}
+
+static void check_killed_task(struct task_struct *t, unsigned long timeout)
+{
+	unsigned long stamp = t->killed_time;
+
+	/*
+	 * Ensure the task is not frozen.
+	 * Also, skip vfork and any other user process that freezer should skip.
+	 */
+	if (unlikely(t->flags & (PF_FROZEN | PF_FREEZER_SKIP)))
+		return;
+	/*
+	 * Skip threads which are already inside do_exit(), for exit_mm() etc.
+	 * might take many seconds.
+	 */
+	if (t->flags & PF_EXITING)
+		return;
+	if (!stamp) {
+		stamp = jiffies;
+		if (!stamp)
+			stamp++;
+		t->killed_time = stamp;
+		return;
+	}
+	if (time_is_after_jiffies(stamp + timeout * HZ))
+		return;
+	trace_sched_process_hang(t);
+	if (sysctl_hung_task_panic) {
+		console_verbose();
+		hung_task_call_panic = true;
+	}
+	/*
+	 * This thread failed to terminate for more than
+	 * sysctl_hung_task_timeout_secs seconds, complain:
+	 */
+	pr_err("INFO: task %s:%d can't die for more than %ld seconds.\n",
+	       t->comm, t->pid, (jiffies - stamp) / HZ);
+	sched_show_task(t);
+	hung_task_show_lock = true;
 	touch_nmi_watchdog();
 }
 
@@ -193,6 +246,9 @@ static void check_hung_uninterruptible_tasks(unsigned long timeout)
 				goto unlock;
 			last_break = jiffies;
 		}
+		/* Check threads which are about to terminate. */
+		if (unlikely(fatal_signal_pending(t)))
+			check_killed_task(t, timeout);
 		/* use "==" to skip the TASK_KILLABLE tasks waiting on NFS */
 		if (t->state == TASK_UNINTERRUPTIBLE)
 			check_hung_task(t, timeout);
@@ -201,10 +257,14 @@ static void check_hung_uninterruptible_tasks(unsigned long timeout)
 	rcu_read_unlock();
 	if (hung_task_show_lock)
 		debug_show_all_locks();
-	if (hung_task_call_panic) {
+
+	if (hung_task_show_all_bt) {
+		hung_task_show_all_bt = false;
 		trigger_all_cpu_backtrace();
-		panic("hung_task: blocked tasks");
 	}
+
+	if (hung_task_call_panic)
+		panic("hung_task: blocked tasks");
 }
 
 static long hung_timeout_jiffies(unsigned long last_checked,

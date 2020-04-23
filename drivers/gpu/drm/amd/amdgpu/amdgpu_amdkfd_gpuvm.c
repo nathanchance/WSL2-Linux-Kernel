@@ -362,13 +362,13 @@ static int vm_validate_pt_pd_bos(struct amdgpu_vm *vm)
 	ret = amdgpu_vm_validate_pt_bos(adev, vm, amdgpu_amdkfd_validate,
 					&param);
 	if (ret) {
-		pr_err("amdgpu: failed to validate PT BOs\n");
+		pr_err("failed to validate PT BOs\n");
 		return ret;
 	}
 
 	ret = amdgpu_amdkfd_validate(&param, pd);
 	if (ret) {
-		pr_err("amdgpu: failed to validate PD\n");
+		pr_err("failed to validate PD\n");
 		return ret;
 	}
 
@@ -377,7 +377,7 @@ static int vm_validate_pt_pd_bos(struct amdgpu_vm *vm)
 	if (vm->use_cpu_for_update) {
 		ret = amdgpu_bo_kmap(pd, NULL);
 		if (ret) {
-			pr_err("amdgpu: failed to kmap PD, ret=%d\n", ret);
+			pr_err("failed to kmap PD, ret=%d\n", ret);
 			return ret;
 		}
 	}
@@ -660,15 +660,15 @@ static int reserve_bo_and_vm(struct kgd_mem *mem,
 
 	ret = ttm_eu_reserve_buffers(&ctx->ticket, &ctx->list,
 				     false, &ctx->duplicates);
-	if (!ret)
-		ctx->reserved = true;
-	else {
-		pr_err("Failed to reserve buffers in ttm\n");
+	if (ret) {
+		pr_err("Failed to reserve buffers in ttm.\n");
 		kfree(ctx->vm_pd);
 		ctx->vm_pd = NULL;
+		return ret;
 	}
 
-	return ret;
+	ctx->reserved = true;
+	return 0;
 }
 
 /**
@@ -733,17 +733,15 @@ static int reserve_bo_and_cond_vms(struct kgd_mem *mem,
 
 	ret = ttm_eu_reserve_buffers(&ctx->ticket, &ctx->list,
 				     false, &ctx->duplicates);
-	if (!ret)
-		ctx->reserved = true;
-	else
-		pr_err("Failed to reserve buffers in ttm.\n");
-
 	if (ret) {
+		pr_err("Failed to reserve buffers in ttm.\n");
 		kfree(ctx->vm_pd);
 		ctx->vm_pd = NULL;
+		return ret;
 	}
 
-	return ret;
+	ctx->reserved = true;
+	return 0;
 }
 
 /**

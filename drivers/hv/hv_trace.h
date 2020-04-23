@@ -286,13 +286,32 @@ TRACE_EVENT(vmbus_send_tl_connect_request,
 		    __field(int, ret)
 		    ),
 	    TP_fast_assign(
-		    memcpy(__entry->guest_id, &msg->guest_endpoint_id.b, 16);
-		    memcpy(__entry->host_id, &msg->host_service_id.b, 16);
+		    export_guid(__entry->guest_id, &msg->guest_endpoint_id);
+		    export_guid(__entry->host_id, &msg->host_service_id);
 		    __entry->ret = ret;
 		    ),
 	    TP_printk("sending guest_endpoint_id %pUl, host_service_id %pUl, "
 		      "ret %d",
 		      __entry->guest_id, __entry->host_id, __entry->ret
+		    )
+	);
+
+TRACE_EVENT(vmbus_send_modifychannel,
+	    TP_PROTO(const struct vmbus_channel_modifychannel *msg,
+		     int ret),
+	    TP_ARGS(msg, ret),
+	    TP_STRUCT__entry(
+		    __field(u32, child_relid)
+		    __field(u32, target_vp)
+		    __field(int, ret)
+		    ),
+	    TP_fast_assign(
+		    __entry->child_relid = msg->child_relid;
+		    __entry->target_vp = msg->target_vp;
+		    __entry->ret = ret;
+		    ),
+	    TP_printk("binding child_relid 0x%x to target_vp 0x%x, ret %d",
+		      __entry->child_relid, __entry->target_vp, __entry->ret
 		    )
 	);
 
