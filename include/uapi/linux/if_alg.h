@@ -26,7 +26,7 @@ struct sockaddr_alg {
 
 struct af_alg_iv {
 	__u32	ivlen;
-	__u8	iv[0];
+	__u8	iv[];
 };
 
 /* Socket options */

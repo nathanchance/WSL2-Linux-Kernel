@@ -50,8 +50,8 @@ struct wfx_dev {
 
 	struct wfx_hif_cmd	hif_cmd;
 	struct wfx_queue	tx_queue[4];
-	struct wfx_queue_stats	tx_queue_stats;
-	int			tx_burst_idx;
+	struct sk_buff_head	tx_pending;
+	wait_queue_head_t	tx_dequeue;
 	atomic_t		tx_lock;
 
 	atomic_t		packet_id;
@@ -77,7 +77,6 @@ struct wfx_vif {
 	u32			link_id_map;
 
 	bool			after_dtim_tx_allowed;
-	struct wfx_grp_addr_table mcast_filter;
 
 	s8			wep_default_key_id;
 	struct sk_buff		*wep_pending_skb;
@@ -86,23 +85,16 @@ struct wfx_vif {
 	struct tx_policy_cache	tx_policy_cache;
 	struct work_struct	tx_policy_upload_work;
 
-	u32			sta_asleep_mask;
-	spinlock_t		ps_state_lock;
 	struct work_struct	update_tim_work;
 
-	int			beacon_int;
-	bool			filter_bssid;
-	bool			fwd_probe_req;
-	bool			disable_beacon_filter;
-	struct work_struct	update_filtering_work;
+	int			filter_mcast_count;
+	u8			filter_mcast_addr[8][ETH_ALEN];
 
 	unsigned long		uapsd_mask;
-	struct ieee80211_tx_queue_params edca_params[IEEE80211_NUM_ACS];
 	struct hif_req_set_bss_params bss_params;
 	struct work_struct	bss_params_work;
 
 	int			join_complete_status;
-	struct work_struct	unjoin_work;
 
 	/* avoid some operations in parallel with scan */
 	struct mutex		scan_lock;

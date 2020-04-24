@@ -254,7 +254,7 @@ struct fc_tlv_desc {
 					 * Size of descriptor excluding
 					 * desc_tag and desc_len fields.
 					 */
-	__u8		desc_value[0];  /* Descriptor Value */
+	__u8		desc_value[];  /* Descriptor Value */
 };
 
 /* Descriptor tag and len fields are considered the mandatory header
@@ -967,7 +967,7 @@ struct fc_fn_li_desc {
 					 * threshold to caause the LI event
 					 */
 	__be32		pname_count;	/* number of portname_list elements */
-	__be64		pname_list[0];	/* list of N_Port_Names accessible
+	__be64		pname_list[];	/* list of N_Port_Names accessible
 					 * through the attached port
 					 */
 };
@@ -982,7 +982,7 @@ struct fc_els_fpin {
 					 * Size of ELS excluding fpin_cmd,
 					 * fpin_zero and desc_len fields.
 					 */
-	struct fc_tlv_desc	fpin_desc[0];	/* Descriptor list */
+	struct fc_tlv_desc	fpin_desc[];	/* Descriptor list */
 };
 
 /* Diagnostic Function Descriptor - FPIN Registration */
@@ -993,7 +993,7 @@ struct fc_df_desc_fpin_reg {
 					 * desc_tag and desc_len fields.
 					 */
 	__be32		count;		/* Number of desc_tags elements */
-	__be32		desc_tags[0];	/* Array of Descriptor Tags.
+	__be32		desc_tags[];	/* Array of Descriptor Tags.
 					 * Each tag indicates a function
 					 * supported by the N_Port (request)
 					 * or by the  N_Port and Fabric
@@ -1013,7 +1013,7 @@ struct fc_els_rdf {
 					 * Size of ELS excluding fpin_cmd,
 					 * fpin_zero and desc_len fields.
 					 */
-	struct fc_tlv_desc	desc[0];	/* Descriptor list */
+	struct fc_tlv_desc	desc[];	/* Descriptor list */
 };
 
 /*
@@ -1026,7 +1026,7 @@ struct fc_els_rdf_resp {
 						 * and desc_list_len fields.
 						 */
 	struct fc_els_lsri_desc	lsri;
-	struct fc_tlv_desc	desc[0];	/* Supported Descriptor list */
+	struct fc_tlv_desc	desc[];	/* Supported Descriptor list */
 };
 
 

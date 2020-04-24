@@ -21,7 +21,8 @@
 #include "gem/selftests/mock_context.h"
 
 #define CS_GPR(engine, n) ((engine)->mmio_base + 0x600 + (n) * 4)
-#define NUM_GPR_DW (16 * 2) /* each GPR is 2 dwords */
+#define NUM_GPR 16
+#define NUM_GPR_DW (NUM_GPR * 2) /* each GPR is 2 dwords */
 
 static struct i915_vma *create_scratch(struct intel_gt *gt)
 {
@@ -68,26 +69,41 @@ static void engine_heartbeat_enable(struct intel_engine_cs *engine,
 	engine->props.heartbeat_interval_ms = saved;
 }
 
+static bool is_active(struct i915_request *rq)
+{
+	if (i915_request_is_active(rq))
+		return true;
+
+	if (i915_request_on_hold(rq))
+		return true;
+
+	if (i915_request_started(rq))
+		return true;
+
+	return false;
+}
+
 static int wait_for_submit(struct intel_engine_cs *engine,
 			   struct i915_request *rq,
 			   unsigned long timeout)
 {
 	timeout += jiffies;
 	do {
-		cond_resched();
+		bool done = time_after(jiffies, timeout);
+
+		if (i915_request_completed(rq)) /* that was quick! */
+			return 0;
+
+		/* Wait until the HW has acknowleged the submission (or err) */
 		intel_engine_flush_submission(engine);
-
-		if (READ_ONCE(engine->execlists.pending[0]))
-			continue;
-
-		if (i915_request_is_active(rq))
+		if (!READ_ONCE(engine->execlists.pending[0]) && is_active(rq))
 			return 0;
 
-		if (i915_request_started(rq)) /* that was quick! */
-			return 0;
-	} while (time_before(jiffies, timeout));
+		if (done)
+			return -ETIME;
 
-	return -ETIME;
+		cond_resched();
+	} while (1);
 }
 
 static int wait_for_reset(struct intel_engine_cs *engine,
@@ -634,9 +650,9 @@ static int live_error_interrupt(void *arg)
 						 error_repr(p->error[i]));
 
 				if (!i915_request_started(client[i])) {
-					pr_debug("%s: %s request not stated!\n",
-						 engine->name,
-						 error_repr(p->error[i]));
+					pr_err("%s: %s request not started!\n",
+					       engine->name,
+					       error_repr(p->error[i]));
 					err = -ETIME;
 					goto out;
 				}
@@ -644,9 +660,10 @@ static int live_error_interrupt(void *arg)
 				/* Kick the tasklet to process the error */
 				intel_engine_flush_submission(engine);
 				if (client[i]->fence.error != p->error[i]) {
-					pr_err("%s: %s request completed with wrong error code: %d\n",
+					pr_err("%s: %s request (%s) with wrong error code: %d\n",
 					       engine->name,
 					       error_repr(p->error[i]),
+					       i915_request_completed(client[i]) ? "completed" : "running",
 					       client[i]->fence.error);
 					err = -EINVAL;
 					goto out;
@@ -929,7 +946,7 @@ create_rewinder(struct intel_context *ce,
 			goto err;
 	}
 
-	cs = intel_ring_begin(rq, 10);
+	cs = intel_ring_begin(rq, 14);
 	if (IS_ERR(cs)) {
 		err = PTR_ERR(cs);
 		goto err;
@@ -941,8 +958,8 @@ create_rewinder(struct intel_context *ce,
 	*cs++ = MI_SEMAPHORE_WAIT |
 		MI_SEMAPHORE_GLOBAL_GTT |
 		MI_SEMAPHORE_POLL |
-		MI_SEMAPHORE_SAD_NEQ_SDD;
-	*cs++ = 0;
+		MI_SEMAPHORE_SAD_GTE_SDD;
+	*cs++ = idx;
 	*cs++ = offset;
 	*cs++ = 0;
 
@@ -950,6 +967,11 @@ create_rewinder(struct intel_context *ce,
 	*cs++ = i915_mmio_reg_offset(RING_TIMESTAMP(rq->engine->mmio_base));
 	*cs++ = offset + idx * sizeof(u32);
 	*cs++ = 0;
+
+	*cs++ = MI_STORE_DWORD_IMM_GEN4 | MI_USE_GGTT;
+	*cs++ = offset;
+	*cs++ = 0;
+	*cs++ = idx + 1;
 
 	intel_ring_advance(rq, cs);
 
@@ -984,7 +1006,7 @@ static int live_timeslice_rewind(void *arg)
 
 	for_each_engine(engine, gt, id) {
 		enum { A1, A2, B1 };
-		enum { X = 1, Y, Z };
+		enum { X = 1, Z, Y };
 		struct i915_request *rq[3] = {};
 		struct intel_context *ce;
 		unsigned long heartbeat;
@@ -1017,13 +1039,13 @@ static int live_timeslice_rewind(void *arg)
 			goto err;
 		}
 
-		rq[0] = create_rewinder(ce, NULL, slot, 1);
+		rq[0] = create_rewinder(ce, NULL, slot, X);
 		if (IS_ERR(rq[0])) {
 			intel_context_put(ce);
 			goto err;
 		}
 
-		rq[1] = create_rewinder(ce, NULL, slot, 2);
+		rq[1] = create_rewinder(ce, NULL, slot, Y);
 		intel_context_put(ce);
 		if (IS_ERR(rq[1]))
 			goto err;
@@ -1041,7 +1063,7 @@ static int live_timeslice_rewind(void *arg)
 			goto err;
 		}
 
-		rq[2] = create_rewinder(ce, rq[0], slot, 3);
+		rq[2] = create_rewinder(ce, rq[0], slot, Z);
 		intel_context_put(ce);
 		if (IS_ERR(rq[2]))
 			goto err;
@@ -1052,18 +1074,14 @@ static int live_timeslice_rewind(void *arg)
 			       engine->name);
 			goto err;
 		}
-		GEM_BUG_ON(!timer_pending(&engine->execlists.timer));
 
 		/* ELSP[] = { { A:rq1, A:rq2 }, { B:rq1 } } */
-		GEM_BUG_ON(!i915_request_is_active(rq[A1]));
-		GEM_BUG_ON(!i915_request_is_active(rq[A2]));
-		GEM_BUG_ON(!i915_request_is_active(rq[B1]));
-
-		/* Wait for the timeslice to kick in */
-		del_timer(&engine->execlists.timer);
-		tasklet_hi_schedule(&engine->execlists.tasklet);
-		intel_engine_flush_submission(engine);
-
+		if (i915_request_is_active(rq[A2])) { /* semaphore yielded! */
+			/* Wait for the timeslice to kick in */
+			del_timer(&engine->execlists.timer);
+			tasklet_hi_schedule(&engine->execlists.tasklet);
+			intel_engine_flush_submission(engine);
+		}
 		/* -> ELSP[] = { { A:rq1 }, { B:rq1 } } */
 		GEM_BUG_ON(!i915_request_is_active(rq[A1]));
 		GEM_BUG_ON(!i915_request_is_active(rq[B1]));
@@ -1228,8 +1246,14 @@ static int live_timeslice_queue(void *arg)
 		if (err)
 			goto err_rq;
 
-		intel_engine_flush_submission(engine);
+		/* Wait until we ack the release_queue and start timeslicing */
+		do {
+			cond_resched();
+			intel_engine_flush_submission(engine);
+		} while (READ_ONCE(engine->execlists.pending[0]));
+
 		if (!READ_ONCE(engine->execlists.timer.expires) &&
+		    execlists_active(&engine->execlists) == rq &&
 		    !i915_request_completed(rq)) {
 			struct drm_printer p =
 				drm_info_printer(gt->i915->drm.dev);
@@ -2030,6 +2054,9 @@ static int __cancel_hostile(struct live_preempt_cancel *arg)
 	if (!IS_ACTIVE(CONFIG_DRM_I915_PREEMPT_TIMEOUT))
 		return 0;
 
+	if (!intel_has_reset_engine(arg->engine->gt))
+		return 0;
+
 	GEM_TRACE("%s(%s)\n", __func__, arg->engine->name);
 	rq = spinner_create_request(&arg->a.spin,
 				    arg->a.ctx, arg->engine,
@@ -2630,7 +2657,7 @@ static int create_gang(struct intel_engine_cs *engine,
 	if (IS_ERR(rq))
 		goto err_obj;
 
-	rq->batch = vma;
+	rq->batch = i915_vma_get(vma);
 	i915_request_get(rq);
 
 	i915_vma_lock(vma);
@@ -2654,6 +2681,7 @@ static int create_gang(struct intel_engine_cs *engine,
 	return 0;
 
 err_rq:
+	i915_vma_put(rq->batch);
 	i915_request_put(rq);
 err_obj:
 	i915_gem_object_put(obj);
@@ -2750,6 +2778,7 @@ static int live_preempt_gang(void *arg)
 				err = -ETIME;
 			}
 
+			i915_vma_put(rq->batch);
 			i915_request_put(rq);
 			rq = n;
 		}
@@ -2761,6 +2790,331 @@ static int live_preempt_gang(void *arg)
 	}
 
 	return 0;
+}
+
+static struct i915_vma *
+create_gpr_user(struct intel_engine_cs *engine,
+		struct i915_vma *result,
+		unsigned int offset)
+{
+	struct drm_i915_gem_object *obj;
+	struct i915_vma *vma;
+	u32 *cs;
+	int err;
+	int i;
+
+	obj = i915_gem_object_create_internal(engine->i915, 4096);
+	if (IS_ERR(obj))
+		return ERR_CAST(obj);
+
+	vma = i915_vma_instance(obj, result->vm, NULL);
+	if (IS_ERR(vma)) {
+		i915_gem_object_put(obj);
+		return vma;
+	}
+
+	err = i915_vma_pin(vma, 0, 0, PIN_USER);
+	if (err) {
+		i915_vma_put(vma);
+		return ERR_PTR(err);
+	}
+
+	cs = i915_gem_object_pin_map(obj, I915_MAP_WC);
+	if (IS_ERR(cs)) {
+		i915_vma_put(vma);
+		return ERR_CAST(cs);
+	}
+
+	/* All GPR are clear for new contexts. We use GPR(0) as a constant */
+	*cs++ = MI_LOAD_REGISTER_IMM(1);
+	*cs++ = CS_GPR(engine, 0);
+	*cs++ = 1;
+
+	for (i = 1; i < NUM_GPR; i++) {
+		u64 addr;
+
+		/*
+		 * Perform: GPR[i]++
+		 *
+		 * As we read and write into the context saved GPR[i], if
+		 * we restart this batch buffer from an earlier point, we
+		 * will repeat the increment and store a value > 1.
+		 */
+		*cs++ = MI_MATH(4);
+		*cs++ = MI_MATH_LOAD(MI_MATH_REG_SRCA, MI_MATH_REG(i));
+		*cs++ = MI_MATH_LOAD(MI_MATH_REG_SRCB, MI_MATH_REG(0));
+		*cs++ = MI_MATH_ADD;
+		*cs++ = MI_MATH_STORE(MI_MATH_REG(i), MI_MATH_REG_ACCU);
+
+		addr = result->node.start + offset + i * sizeof(*cs);
+		*cs++ = MI_STORE_REGISTER_MEM_GEN8;
+		*cs++ = CS_GPR(engine, 2 * i);
+		*cs++ = lower_32_bits(addr);
+		*cs++ = upper_32_bits(addr);
+
+		*cs++ = MI_SEMAPHORE_WAIT |
+			MI_SEMAPHORE_POLL |
+			MI_SEMAPHORE_SAD_GTE_SDD;
+		*cs++ = i;
+		*cs++ = lower_32_bits(result->node.start);
+		*cs++ = upper_32_bits(result->node.start);
+	}
+
+	*cs++ = MI_BATCH_BUFFER_END;
+	i915_gem_object_flush_map(obj);
+	i915_gem_object_unpin_map(obj);
+
+	return vma;
+}
+
+static struct i915_vma *create_global(struct intel_gt *gt, size_t sz)
+{
+	struct drm_i915_gem_object *obj;
+	struct i915_vma *vma;
+	int err;
+
+	obj = i915_gem_object_create_internal(gt->i915, sz);
+	if (IS_ERR(obj))
+		return ERR_CAST(obj);
+
+	vma = i915_vma_instance(obj, &gt->ggtt->vm, NULL);
+	if (IS_ERR(vma)) {
+		i915_gem_object_put(obj);
+		return vma;
+	}
+
+	err = i915_ggtt_pin(vma, 0, 0);
+	if (err) {
+		i915_vma_put(vma);
+		return ERR_PTR(err);
+	}
+
+	return vma;
+}
+
+static struct i915_request *
+create_gpr_client(struct intel_engine_cs *engine,
+		  struct i915_vma *global,
+		  unsigned int offset)
+{
+	struct i915_vma *batch, *vma;
+	struct intel_context *ce;
+	struct i915_request *rq;
+	int err;
+
+	ce = intel_context_create(engine);
+	if (IS_ERR(ce))
+		return ERR_CAST(ce);
+
+	vma = i915_vma_instance(global->obj, ce->vm, NULL);
+	if (IS_ERR(vma)) {
+		err = PTR_ERR(vma);
+		goto out_ce;
+	}
+
+	err = i915_vma_pin(vma, 0, 0, PIN_USER);
+	if (err)
+		goto out_ce;
+
+	batch = create_gpr_user(engine, vma, offset);
+	if (IS_ERR(batch)) {
+		err = PTR_ERR(batch);
+		goto out_vma;
+	}
+
+	rq = intel_context_create_request(ce);
+	if (IS_ERR(rq)) {
+		err = PTR_ERR(rq);
+		goto out_batch;
+	}
+
+	i915_vma_lock(vma);
+	err = i915_request_await_object(rq, vma->obj, false);
+	if (!err)
+		err = i915_vma_move_to_active(vma, rq, 0);
+	i915_vma_unlock(vma);
+
+	i915_vma_lock(batch);
+	if (!err)
+		err = i915_request_await_object(rq, batch->obj, false);
+	if (!err)
+		err = i915_vma_move_to_active(batch, rq, 0);
+	if (!err)
+		err = rq->engine->emit_bb_start(rq,
+						batch->node.start,
+						PAGE_SIZE, 0);
+	i915_vma_unlock(batch);
+	i915_vma_unpin(batch);
+
+	if (!err)
+		i915_request_get(rq);
+	i915_request_add(rq);
+
+out_batch:
+	i915_vma_put(batch);
+out_vma:
+	i915_vma_unpin(vma);
+out_ce:
+	intel_context_put(ce);
+	return err ? ERR_PTR(err) : rq;
+}
+
+static int preempt_user(struct intel_engine_cs *engine,
+			struct i915_vma *global,
+			int id)
+{
+	struct i915_sched_attr attr = {
+		.priority = I915_PRIORITY_MAX
+	};
+	struct i915_request *rq;
+	int err = 0;
+	u32 *cs;
+
+	rq = intel_engine_create_kernel_request(engine);
+	if (IS_ERR(rq))
+		return PTR_ERR(rq);
+
+	cs = intel_ring_begin(rq, 4);
+	if (IS_ERR(cs)) {
+		i915_request_add(rq);
+		return PTR_ERR(cs);
+	}
+
+	*cs++ = MI_STORE_DWORD_IMM_GEN4 | MI_USE_GGTT;
+	*cs++ = i915_ggtt_offset(global);
+	*cs++ = 0;
+	*cs++ = id;
+
+	intel_ring_advance(rq, cs);
+
+	i915_request_get(rq);
+	i915_request_add(rq);
+
+	engine->schedule(rq, &attr);
+
+	if (i915_request_wait(rq, 0, HZ / 2) < 0)
+		err = -ETIME;
+	i915_request_put(rq);
+
+	return err;
+}
+
+static int live_preempt_user(void *arg)
+{
+	struct intel_gt *gt = arg;
+	struct intel_engine_cs *engine;
+	struct i915_vma *global;
+	enum intel_engine_id id;
+	u32 *result;
+	int err = 0;
+
+	if (!HAS_LOGICAL_RING_PREEMPTION(gt->i915))
+		return 0;
+
+	/*
+	 * In our other tests, we look at preemption in carefully
+	 * controlled conditions in the ringbuffer. Since most of the
+	 * time is spent in user batches, most of our preemptions naturally
+	 * occur there. We want to verify that when we preempt inside a batch
+	 * we continue on from the current instruction and do not roll back
+	 * to the start, or another earlier arbitration point.
+	 *
+	 * To verify this, we create a batch which is a mixture of
+	 * MI_MATH (gpr++) MI_SRM (gpr) and preemption points. Then with
+	 * a few preempting contexts thrown into the mix, we look for any
+	 * repeated instructions (which show up as incorrect values).
+	 */
+
+	global = create_global(gt, 4096);
+	if (IS_ERR(global))
+		return PTR_ERR(global);
+
+	result = i915_gem_object_pin_map(global->obj, I915_MAP_WC);
+	if (IS_ERR(result)) {
+		i915_vma_unpin_and_release(&global, 0);
+		return PTR_ERR(result);
+	}
+
+	for_each_engine(engine, gt, id) {
+		struct i915_request *client[3] = {};
+		struct igt_live_test t;
+		int i;
+
+		if (!intel_engine_has_preemption(engine))
+			continue;
+
+		if (IS_GEN(gt->i915, 8) && engine->class != RENDER_CLASS)
+			continue; /* we need per-context GPR */
+
+		if (igt_live_test_begin(&t, gt->i915, __func__, engine->name)) {
+			err = -EIO;
+			break;
+		}
+
+		memset(result, 0, 4096);
+
+		for (i = 0; i < ARRAY_SIZE(client); i++) {
+			struct i915_request *rq;
+
+			rq = create_gpr_client(engine, global,
+					       NUM_GPR * i * sizeof(u32));
+			if (IS_ERR(rq))
+				goto end_test;
+
+			client[i] = rq;
+		}
+
+		/* Continuously preempt the set of 3 running contexts */
+		for (i = 1; i <= NUM_GPR; i++) {
+			err = preempt_user(engine, global, i);
+			if (err)
+				goto end_test;
+		}
+
+		if (READ_ONCE(result[0]) != NUM_GPR) {
+			pr_err("%s: Failed to release semaphore\n",
+			       engine->name);
+			err = -EIO;
+			goto end_test;
+		}
+
+		for (i = 0; i < ARRAY_SIZE(client); i++) {
+			int gpr;
+
+			if (i915_request_wait(client[i], 0, HZ / 2) < 0) {
+				err = -ETIME;
+				goto end_test;
+			}
+
+			for (gpr = 1; gpr < NUM_GPR; gpr++) {
+				if (result[NUM_GPR * i + gpr] != 1) {
+					pr_err("%s: Invalid result, client %d, gpr %d, result: %d\n",
+					       engine->name,
+					       i, gpr, result[NUM_GPR * i + gpr]);
+					err = -EINVAL;
+					goto end_test;
+				}
+			}
+		}
+
+end_test:
+		for (i = 0; i < ARRAY_SIZE(client); i++) {
+			if (!client[i])
+				break;
+
+			i915_request_put(client[i]);
+		}
+
+		/* Flush the semaphores on error */
+		smp_store_mb(result[0], -1);
+		if (igt_live_test_end(&t))
+			err = -EIO;
+		if (err)
+			break;
+	}
+
+	i915_vma_unpin_and_release(&global, I915_VMA_RELEASE_MAP);
+	return err;
 }
 
 static int live_preempt_timeout(void *arg)
@@ -3970,6 +4324,7 @@ int intel_execlists_live_selftests(struct drm_i915_private *i915)
 		SUBTEST(live_chain_preempt),
 		SUBTEST(live_preempt_gang),
 		SUBTEST(live_preempt_timeout),
+		SUBTEST(live_preempt_user),
 		SUBTEST(live_preempt_smoke),
 		SUBTEST(live_virtual_engine),
 		SUBTEST(live_virtual_mask),
@@ -4103,7 +4458,7 @@ static int live_lrc_layout(void *arg)
 			err = PTR_ERR(hw);
 			break;
 		}
-		hw += LRC_STATE_PN * PAGE_SIZE / sizeof(*hw);
+		hw += LRC_STATE_OFFSET / sizeof(*hw);
 
 		execlists_init_reg_state(memset(lrc, POISON_INUSE, PAGE_SIZE),
 					 engine->kernel_context,
@@ -4239,6 +4594,21 @@ static int live_lrc_fixed(void *arg)
 				"BB_STATE"
 			},
 			{
+				i915_mmio_reg_offset(RING_BB_PER_CTX_PTR(engine->mmio_base)),
+				lrc_ring_wa_bb_per_ctx(engine),
+				"RING_BB_PER_CTX_PTR"
+			},
+			{
+				i915_mmio_reg_offset(RING_INDIRECT_CTX(engine->mmio_base)),
+				lrc_ring_indirect_ptr(engine),
+				"RING_INDIRECT_CTX_PTR"
+			},
+			{
+				i915_mmio_reg_offset(RING_INDIRECT_CTX_OFFSET(engine->mmio_base)),
+				lrc_ring_indirect_offset(engine),
+				"RING_INDIRECT_CTX_OFFSET"
+			},
+			{
 				i915_mmio_reg_offset(RING_CTX_TIMESTAMP(engine->mmio_base)),
 				CTX_TIMESTAMP - 1,
 				"RING_CTX_TIMESTAMP"
@@ -4256,7 +4626,7 @@ static int live_lrc_fixed(void *arg)
 			err = PTR_ERR(hw);
 			break;
 		}
-		hw += LRC_STATE_PN * PAGE_SIZE / sizeof(*hw);
+		hw += LRC_STATE_OFFSET / sizeof(*hw);
 
 		for (t = tbl; t->name; t++) {
 			int dw = find_offset(hw, t->reg);
@@ -4842,7 +5212,7 @@ store_context(struct intel_context *ce, struct i915_vma *scratch)
 	x = 0;
 	dw = 0;
 	hw = ce->engine->pinned_default_state;
-	hw += LRC_STATE_PN * PAGE_SIZE / sizeof(*hw);
+	hw += LRC_STATE_OFFSET / sizeof(*hw);
 	do {
 		u32 len = hw[dw] & 0x7f;
 
@@ -4995,7 +5365,7 @@ static struct i915_vma *load_context(struct intel_context *ce, u32 poison)
 
 	dw = 0;
 	hw = ce->engine->pinned_default_state;
-	hw += LRC_STATE_PN * PAGE_SIZE / sizeof(*hw);
+	hw += LRC_STATE_OFFSET / sizeof(*hw);
 	do {
 		u32 len = hw[dw] & 0x7f;
 
@@ -5119,12 +5489,12 @@ static int compare_isolation(struct intel_engine_cs *engine,
 		err = PTR_ERR(lrc);
 		goto err_B1;
 	}
-	lrc += LRC_STATE_PN * PAGE_SIZE / sizeof(*hw);
+	lrc += LRC_STATE_OFFSET / sizeof(*hw);
 
 	x = 0;
 	dw = 0;
 	hw = engine->pinned_default_state;
-	hw += LRC_STATE_PN * PAGE_SIZE / sizeof(*hw);
+	hw += LRC_STATE_OFFSET / sizeof(*hw);
 	do {
 		u32 len = hw[dw] & 0x7f;
 
@@ -5155,7 +5525,6 @@ static int compare_isolation(struct intel_engine_cs *engine,
 					       A[0][x], B[0][x], B[1][x],
 					       poison, lrc[dw + 1]);
 					err = -EINVAL;
-					break;
 				}
 			}
 			dw += 2;
@@ -5294,6 +5663,7 @@ static int live_lrc_isolation(void *arg)
 		0xffffffff,
 		0xffff0000,
 	};
+	int err = 0;
 
 	/*
 	 * Our goal is try and verify that per-context state cannot be
@@ -5304,7 +5674,6 @@ static int live_lrc_isolation(void *arg)
 	 */
 
 	for_each_engine(engine, gt, id) {
-		int err = 0;
 		int i;
 
 		/* Just don't even ask */
@@ -5315,23 +5684,25 @@ static int live_lrc_isolation(void *arg)
 		intel_engine_pm_get(engine);
 		if (engine->pinned_default_state) {
 			for (i = 0; i < ARRAY_SIZE(poison); i++) {
-				err = __lrc_isolation(engine, poison[i]);
-				if (err)
-					break;
+				int result;
 
-				err = __lrc_isolation(engine, ~poison[i]);
-				if (err)
-					break;
+				result = __lrc_isolation(engine, poison[i]);
+				if (result && !err)
+					err = result;
+
+				result = __lrc_isolation(engine, ~poison[i]);
+				if (result && !err)
+					err = result;
 			}
 		}
 		intel_engine_pm_put(engine);
-		if (igt_flush_test(gt->i915))
+		if (igt_flush_test(gt->i915)) {
 			err = -EIO;
-		if (err)
-			return err;
+			break;
+		}
 	}
 
-	return 0;
+	return err;
 }
 
 static void garbage_reset(struct intel_engine_cs *engine,
@@ -5365,7 +5736,7 @@ static struct i915_request *garbage(struct intel_context *ce,
 	prandom_bytes_state(prng,
 			    ce->lrc_reg_state,
 			    ce->engine->context_size -
-			    LRC_STATE_PN * PAGE_SIZE);
+			    LRC_STATE_OFFSET);
 
 	rq = intel_context_create_request(ce);
 	if (IS_ERR(rq)) {

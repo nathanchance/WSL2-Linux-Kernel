@@ -44,7 +44,7 @@ struct mic_device_desc {
 	__u8 feature_len;
 	__u8 config_len;
 	__u8 status;
-	__le64 config[0];
+	__le64 config[];
 } __attribute__ ((aligned(8)));
 
 /**
@@ -102,7 +102,7 @@ struct mic_bootparam {
  */
 struct mic_device_page {
 	struct mic_bootparam bootparam;
-	struct mic_device_desc desc[0];
+	struct mic_device_desc desc[];
 };
 /**
  * struct mic_vqconfig: This is how we expect the device configuration field

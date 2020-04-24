@@ -166,7 +166,7 @@ struct symbol {
 				    *  (only for external modules) **/
 	unsigned int is_static:1;  /* 1 if symbol is not global */
 	enum export  export;       /* Type of export */
-	char name[0];
+	char name[];
 };
 
 static struct symbol *symbolhash[SYMBOL_HASH_SIZE];
@@ -2251,6 +2251,7 @@ static void add_header(struct buffer *b, struct module *mod)
 	 * Include build-salt.h after module.h in order to
 	 * inherit the definitions.
 	 */
+	buf_printf(b, "#define INCLUDE_VERMAGIC\n");
 	buf_printf(b, "#include <linux/build-salt.h>\n");
 	buf_printf(b, "#include <linux/vermagic.h>\n");
 	buf_printf(b, "#include <linux/compiler.h>\n");
