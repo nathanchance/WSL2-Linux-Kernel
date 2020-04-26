@@ -64,4 +64,17 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
     -e SHUFFLE_PAGE_ALLOCATOR \
     --set-val ARCH_MMAP_RND_BITS 32
 
+# Enable CFI, which requires enabling MODULES again to avoid a panic at boot
+# Once that is fixed, this check will move into the initial tuning section
+# Enable a bunch of module checks to avoid issues
+./scripts/config \
+    --file "${CONFIG}" \
+    -e CFI_CLANG \
+    -e MODULES \
+    -e MODULE_SIG \
+    -e MODULE_SIG_ALL \
+    -e MODULE_SIG_FORCE \
+    -e MODULE_SIG_SHA512 \
+    -e STRICT_MODULE_RWX
+
 ./bin/build.sh -u
