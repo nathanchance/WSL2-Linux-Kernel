@@ -2286,7 +2286,7 @@ static void bpf_link_show_fdinfo(struct seq_file *m, struct file *filp)
 }
 #endif
 
-const struct file_operations bpf_link_fops = {
+static const struct file_operations bpf_link_fops = {
 #ifdef CONFIG_PROC_FS
 	.show_fdinfo	= bpf_link_show_fdinfo,
 #endif
@@ -3631,8 +3631,10 @@ static int link_update(union bpf_attr *attr)
 		return PTR_ERR(link);
 
 	new_prog = bpf_prog_get(attr->link_update.new_prog_fd);
-	if (IS_ERR(new_prog))
-		return PTR_ERR(new_prog);
+	if (IS_ERR(new_prog)) {
+		ret = PTR_ERR(new_prog);
+		goto out_put_link;
+	}
 
 	if (flags & BPF_F_REPLACE) {
 		old_prog = bpf_prog_get(attr->link_update.old_prog_fd);
@@ -3641,6 +3643,9 @@ static int link_update(union bpf_attr *attr)
 			old_prog = NULL;
 			goto out_put_progs;
 		}
+	} else if (attr->link_update.old_prog_fd) {
+		ret = -EINVAL;
+		goto out_put_progs;
 	}
 
 #ifdef CONFIG_CGROUP_BPF
@@ -3656,6 +3661,8 @@ out_put_progs:
 		bpf_prog_put(old_prog);
 	if (ret)
 		bpf_prog_put(new_prog);
+out_put_link:
+	bpf_link_put(link);
 	return ret;
 }
 
