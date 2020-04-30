@@ -910,6 +910,7 @@ CC_FLAGS_LTO	+= -fvisibility=hidden
 
 # Limit inlining across translation units to reduce binary size
 KBUILD_LDFLAGS += -mllvm -import-instr-limit=5
+KBUILD_LDFLAGS += --lto-O3
 endif
 
 ifdef CONFIG_LTO
