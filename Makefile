@@ -907,6 +907,7 @@ CC_FLAGS_LTO_CLANG += -fvisibility=default
 
 # Limit inlining across translation units to reduce binary size
 LD_FLAGS_LTO_CLANG := -mllvm -import-instr-limit=5
+LD_FLAGS_LTO_CLANG += --lto-O3
 KBUILD_LDFLAGS += $(LD_FLAGS_LTO_CLANG)
 
 KBUILD_LDS_MODULE += scripts/module-lto.lds
