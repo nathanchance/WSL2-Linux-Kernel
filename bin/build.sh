@@ -111,8 +111,10 @@ function build_kernel() {
                     --file "${O}"/.config \
                     -d MCORE2 \
                     -e MZEN2 \
+                    -d CC_OPTIMIZE_FOR_PERFORMANCE \
                     -e CC_OPTIMIZE_FOR_PERFORMANCE_O3
                 set +x
+                rg "CONFIG_MZEN2|CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3" "${O}"/.config
                 ;;
         esac
     fi
