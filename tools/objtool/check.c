@@ -322,6 +322,19 @@ err:
 	return ret;
 }
 
+static struct instruction *find_last_insn(struct objtool_file *file,
+					  struct section *sec)
+{
+	struct instruction *insn = NULL;
+	unsigned int offset;
+	unsigned int end = (sec->len > 10) ? sec->len - 10 : 0;
+
+	for (offset = sec->len - 1; offset >= end && !insn; offset--)
+		insn = find_insn(file, sec, offset);
+
+	return insn;
+}
+
 /*
  * Mark "ud2" instructions and manually annotated dead ends.
  */
@@ -330,7 +343,6 @@ static int add_dead_ends(struct objtool_file *file)
 	struct section *sec;
 	struct rela *rela;
 	struct instruction *insn;
-	bool found;
 
 	/*
 	 * By default, "ud2" is a dead end unless otherwise annotated, because
@@ -356,15 +368,8 @@ static int add_dead_ends(struct objtool_file *file)
 		if (insn)
 			insn = list_prev_entry(insn, list);
 		else if (rela->addend == rela->sym->sec->len) {
-			found = false;
-			list_for_each_entry_reverse(insn, &file->insn_list, list) {
-				if (insn->sec == rela->sym->sec) {
-					found = true;
-					break;
-				}
-			}
-
-			if (!found) {
+			insn = find_last_insn(file, rela->sym->sec);
+			if (!insn) {
 				WARN("can't find unreachable insn at %s+0x%x",
 				     rela->sym->sec->name, rela->addend);
 				return -1;
@@ -398,15 +403,8 @@ reachable:
 		if (insn)
 			insn = list_prev_entry(insn, list);
 		else if (rela->addend == rela->sym->sec->len) {
-			found = false;
-			list_for_each_entry_reverse(insn, &file->insn_list, list) {
-				if (insn->sec == rela->sym->sec) {
-					found = true;
-					break;
-				}
-			}
-
-			if (!found) {
+			insn = find_last_insn(file, rela->sym->sec);
+			if (!insn) {
 				WARN("can't find reachable insn at %s+0x%x",
 				     rela->sym->sec->name, rela->addend);
 				return -1;
@@ -592,6 +590,55 @@ static int add_ignore_alternatives(struct objtool_file *file)
 	}
 
 	return 0;
+}
+
+/*
+ * CONFIG_CFI_CLANG: Check if the symbol points to a CFI jump table.
+ */
+static bool is_cfi_function(struct symbol *sym)
+{
+	char *p;
+
+	if (sym->type != STT_FUNC)
+		return false;
+
+	if (!strcmp(sym->name, "__cfi_check") ||
+	    !strncmp(sym->name, "__typeid__", 10))
+		return true;
+
+	p = strrchr(sym->name, '.');
+
+	return (p && !strcmp(p, ".cfi_jt"));
+}
+
+static bool is_cfi_section(struct section *sec)
+{
+	return (sec->name &&
+		(!strncmp(sec->name, ".text..L.cfi.jumptable", 22) ||
+		 !strcmp(sec->name, ".text.__cfi_check")));
+}
+
+/*
+ * CONFIG_CFI_CLANG: Ignore CFI jump tables.
+ */
+static void add_cfi_jumptables(struct objtool_file *file)
+{
+	struct section *sec;
+	struct symbol *func;
+	struct instruction *insn;
+
+	for_each_sec(file, sec) {
+		if (!is_cfi_section(sec))
+			continue;
+
+		list_for_each_entry(func, &sec->symbol_list, list) {
+			if (!is_cfi_function(func))
+				continue;
+
+			sym_for_each_insn(file, func, insn)
+				insn->ignore = true;
+		}
+	}
 }
 
 /*
@@ -1535,6 +1582,7 @@ static int decode_sections(struct objtool_file *file)
 
 	add_ignores(file);
 	add_uaccess_safe(file);
+	add_cfi_jumptables(file);
 
 	ret = add_ignore_alternatives(file);
 	if (ret)
