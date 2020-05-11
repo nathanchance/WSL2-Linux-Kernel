@@ -404,7 +404,8 @@ static uint32_t (*w2)(uint16_t);
 /* Names of the sections that could contain calls to mcount. */
 static int is_mcounted_section_name(char const *const txtname)
 {
-	return strncmp(".text",          txtname, 5) == 0 ||
+	return (strncmp(".text",           txtname, 5) == 0 &&
+		 strcmp(".text..nomcount", txtname) != 0) ||
 		strcmp(".init.text",     txtname) == 0 ||
 		strcmp(".ref.text",      txtname) == 0 ||
 		strcmp(".sched.text",    txtname) == 0 ||
