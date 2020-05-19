@@ -21,6 +21,7 @@
 #include <linux/memory.h>
 #include <linux/notifier.h>
 #include <linux/percpu_counter.h>
+#include <linux/page_reporting.h>
 
 #include <linux/hyperv.h>
 #include <asm/hyperv-tlfs.h>
@@ -563,6 +564,10 @@ struct hv_dynmem_device {
 	 * The negotiated version agreed by host.
 	 */
 	__u32 version;
+
+#ifdef CONFIG_PAGE_REPORTING
+	struct page_reporting_dev_info pr_dev_info;
+#endif
 };
 
 static struct hv_dynmem_device dm_device;
@@ -1565,6 +1570,83 @@ static void balloon_onchannelcallback(void *context)
 
 }
 
+#ifdef CONFIG_PAGE_REPORTING
+static int hv_free_page_report(struct page_reporting_dev_info *pr_dev_info,
+		    struct scatterlist *sgl, unsigned int nents)
+{
+	unsigned long flags;
+	struct hv_memory_hint *hint;
+	int i;
+	u64 status;
+	struct scatterlist *sg;
+
+	WARN_ON(nents > HV_MAX_GPA_PAGE_RANGES);
+	local_irq_save(flags);
+	hint = *(struct hv_memory_hint **)this_cpu_ptr(hyperv_pcpu_input_arg);
+	if (!hint) {
+		local_irq_restore(flags);
+		return -ENOSPC;
+	}
+
+	hint->type = HV_EXT_MEMORY_HEAT_HINT_TYPE_COLD_DISCARD;
+	hint->reserved = 0;
+	for (i = 0, sg = sgl; sg; sg = sg_next(sg), i++) {
+		int order;
+		union hv_gpa_page_range *range;
+
+		order = get_order(sg->length);
+		range = &hint->ranges[i];
+		range->address_space = 0;
+		range->page.largepage = 1;
+		range->page.additional_pages = (1ull << (order - 9)) - 1;
+		range->base_large_pfn = page_to_pfn(sg_page(sg)) >> 9;
+	}
+
+	status = hv_do_rep_hypercall(HV_EXT_CALL_MEMORY_HEAT_HINT, nents, 0,
+				     hint, NULL);
+	local_irq_restore(flags);
+	status &= HV_HYPERCALL_RESULT_MASK;
+	if (status != HV_STATUS_SUCCESS) {
+		pr_err("Cold memory discard hypercall failed with status %llx\n",
+			status);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int enable_page_reporting(void)
+{
+	int ret;
+
+	if (!(hv_query_ext_cap() &
+	      HV_EXT_CAPABILITY_MEMORY_COLD_DISCARD_HINT)) {
+		pr_info("Cold memory discard hint not supported by Hyper-V\n");
+		return 0;
+	}
+
+	BUILD_BUG_ON(PAGE_REPORTING_CAPACITY > HV_MAX_GPA_PAGE_RANGES);
+	dm_device.pr_dev_info.report = hv_free_page_report;
+	ret = page_reporting_register(&dm_device.pr_dev_info);
+	if (ret < 0) {
+		dm_device.pr_dev_info.report = NULL;
+		pr_err("Failed to enable cold memory discard: %d\n", ret);
+	} else {
+		pr_info("Cold memory discard hint enabled\n");
+	}
+
+	return ret;
+}
+
+static void disable_page_reporting(void)
+{
+	if (dm_device.pr_dev_info.report) {
+		page_reporting_unregister(&dm_device.pr_dev_info);
+		dm_device.pr_dev_info.report = NULL;
+	}
+}
+#endif //CONFIG_PAGE_REPORTING
+
 static int balloon_connect_vsp(struct hv_device *dev)
 {
 	struct dm_version_request version_req;
@@ -1710,6 +1792,11 @@ static int balloon_probe(struct hv_device *dev,
 	if (ret != 0)
 		return ret;
 
+#ifdef CONFIG_PAGE_REPORTING
+	if (enable_page_reporting() < 0)
+		goto probe_error;
+#endif
+
 	dm_device.state = DM_INITIALIZED;
 
 	dm_device.thread =
@@ -1728,6 +1815,9 @@ probe_error:
 #ifdef CONFIG_MEMORY_HOTPLUG
 	unregister_memory_notifier(&hv_memory_nb);
 	restore_online_page_callback(&hv_online_page);
+#endif
+#ifdef CONFIG_PAGE_REPORTING
+	disable_page_reporting();
 #endif
 	return ret;
 }
@@ -1750,6 +1840,9 @@ static int balloon_remove(struct hv_device *dev)
 #ifdef CONFIG_MEMORY_HOTPLUG
 	unregister_memory_notifier(&hv_memory_nb);
 	restore_online_page_callback(&hv_online_page);
+#endif
+#ifdef CONFIG_PAGE_REPORTING
+	disable_page_reporting();
 #endif
 	spin_lock_irqsave(&dm_device.ha_lock, flags);
 	list_for_each_entry_safe(has, tmp, &dm->ha_region_list, list) {
