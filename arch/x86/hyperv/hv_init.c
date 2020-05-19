@@ -528,3 +528,27 @@ bool hv_is_hibernation_supported(void)
 	return acpi_sleep_state_supported(ACPI_STATE_S4);
 }
 EXPORT_SYMBOL_GPL(hv_is_hibernation_supported);
+
+u64 hv_query_ext_cap(void)
+{
+	u64 *cap;
+	unsigned long flags;
+	u64 ext_cap = 0;
+
+	/*
+	 * Querying extended capabilities is an extended hypercall. Check if the
+	 * partition supports extended hypercall, first.
+	 */
+	if (!(ms_hyperv.b_features & HV_ENABLE_EXTENDED_HYPERCALLS))
+		return 0;
+
+	local_irq_save(flags);
+	cap = *(u64 **)this_cpu_ptr(hyperv_pcpu_input_arg);
+	if (hv_do_hypercall(HV_EXT_CALL_QUERY_CAPABILITIES, NULL, cap) ==
+	    HV_STATUS_SUCCESS)
+		ext_cap = *cap;
+
+	local_irq_restore(flags);
+	return ext_cap;
+}
+EXPORT_SYMBOL_GPL(hv_query_ext_cap);
