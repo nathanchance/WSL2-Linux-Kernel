@@ -6062,6 +6062,7 @@ static int ftrace_cmp_ips(const void *a, const void *b)
 	return 0;
 }
 
+__nomcount
 static int ftrace_process_locs(struct module *mod,
 			       unsigned long *start,
 			       unsigned long *end)
