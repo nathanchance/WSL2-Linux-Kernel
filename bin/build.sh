@@ -34,7 +34,7 @@ function parse_parameters() {
 
 function set_toolchain() {
     # Add toolchain folders to PATH and request path override (PO environment variable)
-    export PATH="${PO:+${PO}:}${CBL_LLVM:+${CBL_LLVM}:}${CBL_BNTL:+${CBL_BNTL}:}${PATH}"
+    export PATH="${PO:+${PO}:}${CBL_LLVM:+${CBL_LLVM}:}${BASE}/bin:${CBL_BNTL:+${CBL_BNTL}:}${PATH}"
 
     # Use ccache if it exists
     CCACHE=$(command -v ccache)
