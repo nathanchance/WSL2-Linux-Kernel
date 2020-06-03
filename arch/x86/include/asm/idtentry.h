@@ -237,7 +237,7 @@ static __always_inline void __##func(struct pt_regs *regs, u8 vector)
  * Runs the function on the interrupt stack if the entry hit kernel mode
  */
 #define DEFINE_IDTENTRY_SYSVEC(func)					\
-static void __##func(struct pt_regs *regs);				\
+static void __##func(void *regs);					\
 									\
 __visible noinstr void func(struct pt_regs *regs)			\
 {									\
@@ -252,7 +252,7 @@ __visible noinstr void func(struct pt_regs *regs)			\
 	idtentry_exit_cond_rcu(regs, rcu_exit);				\
 }									\
 									\
-static noinline void __##func(struct pt_regs *regs)
+static noinline void __##func(void *regs)
 
 /**
  * DEFINE_IDTENTRY_SYSVEC_SIMPLE - Emit code for simple system vector IDT
