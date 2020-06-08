@@ -11,6 +11,7 @@ function parse_parameters() {
             *=*) export "${1?}" ;;
             -i | --incremental) INCREMENTAL=true ;;
             -j | --jobs) JOBS=${1} ;;
+            -r | --release) RELEASE=true ;;
             -u | --update-config-only) UPDATE_CONFIG_ONLY=true ;;
             -v | --verbose) VERBOSE=true ;;
         esac
@@ -106,7 +107,23 @@ function build_kernel() {
     ${INCREMENTAL:=false} || CONFIG_MAKE_TARGETS=(distclean "${CONFIG_MAKE_TARGETS[@]}")
     kmake "${CONFIG_MAKE_TARGETS[@]}"
 
-    ${UPDATE_CONFIG_ONLY:=false} && FINAL_TARGET=savedefconfig
+    if ${UPDATE_CONFIG_ONLY:=false}; then
+        FINAL_TARGET=savedefconfig
+    elif ! ${RELEASE:=false}; then
+        case "$(id -un)@$(uname -n)" in
+            nathan@ubuntu-* | nathan@Ryzen-9-3900X)
+                set -x
+                "${BASE}"/scripts/config \
+                    --file "${O}"/.config \
+                    -d MCORE2 \
+                    -e MZEN2 \
+                    -d CC_OPTIMIZE_FOR_PERFORMANCE \
+                    -e CC_OPTIMIZE_FOR_PERFORMANCE_O3
+                set +x
+                rg "CONFIG_MZEN2|CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3" "${O}"/.config
+                ;;
+        esac
+    fi
     FINAL_MAKE_TARGETS=(olddefconfig "${FINAL_TARGET:=all}")
     kmake "${FINAL_MAKE_TARGETS[@]}"
 
