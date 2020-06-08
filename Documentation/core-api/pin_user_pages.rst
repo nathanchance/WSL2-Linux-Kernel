@@ -174,21 +174,19 @@ needs to be set.
 CASE 5: Pinning in order to write to the data within the page
 -------------------------------------------------------------
 Even though neither DMA nor Direct IO is involved, just a simple case of "pin,
-access page's data, unpin" can cause a problem. Case 5 may be considered a
+write to a page's data, unpin" can cause a problem. Case 5 may be considered a
 superset of Case 1, plus Case 2, plus anything that invokes that pattern. In
 other words, if the code is neither Case 1 nor Case 2, it may still require
 FOLL_PIN, for patterns like this:
 
 Correct (uses FOLL_PIN calls):
     pin_user_pages()
-    access the data within the pages
-    set_page_dirty_lock()
+    write to the data within the pages
     unpin_user_pages()
 
 INCORRECT (uses FOLL_GET calls):
     get_user_pages()
-    access the data within the pages
-    set_page_dirty_lock()
+    write to the data within the pages
     put_page()
 
 page_maybe_dma_pinned(): the whole point of pinning

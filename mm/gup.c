@@ -3083,4 +3083,3 @@ long pin_user_pages_locked(unsigned long start, unsigned long nr_pages,
 				       gup_flags | FOLL_TOUCH);
 }
 EXPORT_SYMBOL(pin_user_pages_locked);
-
