@@ -37,8 +37,8 @@ static __always_inline bool irq_needs_irq_stack(struct pt_regs *regs)
 	return !user_mode(regs) && !irqstack_active();
 }
 
-static __always_inline void run_on_irqstack_cond(void *func, void *arg,
-						 struct pt_regs *regs)
+static __always_inline __nocfi void run_on_irqstack_cond(void *func, void *arg,
+							 struct pt_regs *regs)
 {
 	void (*__func)(void *arg) = func;
 
