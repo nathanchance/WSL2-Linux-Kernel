@@ -7,6 +7,11 @@ CONFIG=arch/x86/configs/wsl2_defconfig
 
 curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-msft-wsl-4.19.y/Microsoft/config-wsl
 
+# Enable NET_9P_VIRTIO for Insider Fast Ring compatibility
+./scripts/config \
+    --file "${CONFIG}" \
+    -e NET_9P_VIRTIO
+
 # Initial tuning
 #   * FTRACE: Limit attack surface and avoids a warning at boot.
 #   * MODULES: Limit attack surface and we don't support them anyways.
