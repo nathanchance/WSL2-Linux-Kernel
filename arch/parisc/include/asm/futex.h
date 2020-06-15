@@ -36,13 +36,14 @@ static inline int
 arch_futex_atomic_op_inuser(int op, int oparg, int *oval, u32 __user *uaddr)
 {
 	unsigned long int flags;
+	volatile u32 __user *u = uaddr;
 	int oldval, ret;
 	u32 tmp;
 
-	_futex_spin_lock_irqsave(uaddr, &flags);
+	_futex_spin_lock_irqsave(u, &flags);
 
 	ret = -EFAULT;
-	if (unlikely(get_user(oldval, uaddr) != 0))
+	if (unlikely(get_user(oldval, u) != 0))
 		goto out_pagefault_enable;
 
 	ret = 0;
@@ -68,11 +69,11 @@ arch_futex_atomic_op_inuser(int op, int oparg, int *oval, u32 __user *uaddr)
 		ret = -ENOSYS;
 	}
 
-	if (ret == 0 && unlikely(put_user(tmp, uaddr) != 0))
+	if (ret == 0 && unlikely(put_user(tmp, u) != 0))
 		ret = -EFAULT;
 
 out_pagefault_enable:
-	_futex_spin_unlock_irqrestore(uaddr, &flags);
+	_futex_spin_unlock_irqrestore(u, &flags);
 
 	if (!ret)
 		*oval = oldval;
@@ -86,14 +87,15 @@ futex_atomic_cmpxchg_inatomic(u32 *uval, u32 __user *uaddr,
 {
 	u32 val;
 	unsigned long flags;
+	volatile u32 __user *u = uaddr;
 
 	/* futex.c wants to do a cmpxchg_inatomic on kernel NULL, which is
 	 * our gateway page, and causes no end of trouble...
 	 */
-	if (uaccess_kernel() && !uaddr)
+	if (uaccess_kernel() && !u)
 		return -EFAULT;
 
-	if (!access_ok(uaddr, sizeof(u32)))
+	if (!access_ok(u, sizeof(u32)))
 		return -EFAULT;
 
 	/* HPPA has no cmpxchg in hardware and therefore the
@@ -102,19 +104,19 @@ futex_atomic_cmpxchg_inatomic(u32 *uval, u32 __user *uaddr,
 	 * address. This should scale to a couple of CPUs.
 	 */
 
-	_futex_spin_lock_irqsave(uaddr, &flags);
-	if (unlikely(get_user(val, uaddr) != 0)) {
-		_futex_spin_unlock_irqrestore(uaddr, &flags);
+	_futex_spin_lock_irqsave(u, &flags);
+	if (unlikely(get_user(val, u) != 0)) {
+		_futex_spin_unlock_irqrestore(u, &flags);
 		return -EFAULT;
 	}
 
-	if (val == oldval && unlikely(put_user(newval, uaddr) != 0)) {
-		_futex_spin_unlock_irqrestore(uaddr, &flags);
+	if (val == oldval && unlikely(put_user(newval, u) != 0)) {
+		_futex_spin_unlock_irqrestore(u, &flags);
 		return -EFAULT;
 	}
 
 	*uval = val;
-	_futex_spin_unlock_irqrestore(uaddr, &flags);
+	_futex_spin_unlock_irqrestore(u, &flags);
 
 	return 0;
 }

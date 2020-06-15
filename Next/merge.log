@@ -1,1478 +1,148 @@
 $ date -R
-Sun, 14 Jun 2020 08:46:33 +1000
+Mon, 15 Jun 2020 08:18:13 +1000
 $ git checkout master
 Already on 'master'
 $ git reset --hard stable
-HEAD is now at df2fbf5bfa0e Merge tag 'thermal-v5.8-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/thermal/linux
-Merging origin/master (f82e7b57b5fc Merge tag '5.8-rc-smb3-fixes-part2' of git://git.samba.org/sfrench/cifs-2.6)
+HEAD is now at f82e7b57b5fc Merge tag '5.8-rc-smb3-fixes-part2' of git://git.samba.org/sfrench/cifs-2.6
+Merging origin/master (b3a9e3b9622a Linux 5.8-rc1)
 $ git merge origin/master
-Updating df2fbf5bfa0e..f82e7b57b5fc
+Updating f82e7b57b5fc..b3a9e3b9622a
 Fast-forward
- .../devicetree/bindings/i2c/i2c-designware.txt     |   73 -
- .../devicetree/bindings/i2c/i2c-qcom-cci.txt       |   92 +
- Documentation/devicetree/bindings/i2c/i2c.txt      |   73 +-
- .../bindings/i2c/nuvoton,npcm7xx-i2c.yaml          |   62 +
- .../bindings/i2c/snps,designware-i2c.yaml          |  156 ++
- .../devicetree/bindings/i2c/st,stm32-i2c.yaml      |    8 +-
- Documentation/driver-api/media/v4l2-subdev.rst     |    3 +-
- Documentation/security/keys/core.rst               |   57 +
- Documentation/target/tcm_mod_builder.py            |    4 +-
- Documentation/userspace-api/ioctl/ioctl-number.rst |    1 +
- Documentation/watch_queue.rst                      |  339 +++
- MAINTAINERS                                        |    1 +
- Makefile                                           |   24 +-
- arch/Kconfig                                       |    4 +-
- arch/alpha/Kconfig                                 |   22 +-
- arch/alpha/Kconfig.debug                           |    2 +-
- arch/alpha/boot/tools/objstrip.c                   |    2 +-
- arch/alpha/include/asm/io.h                        |   74 +-
- arch/alpha/kernel/io.c                             |   60 +-
- arch/alpha/kernel/osf_sys.c                        |    2 +-
- arch/alpha/kernel/pci_iommu.c                      |    2 +-
- arch/alpha/kernel/setup.c                          |    5 +-
- arch/alpha/kernel/sys_eiger.c                      |    2 +-
- arch/arc/Kconfig                                   |    2 +-
- arch/arm/Kconfig                                   |   12 +-
- arch/arm/Kconfig.debug                             |    4 +-
- arch/arm/boot/compressed/head.S                    |   62 +
- arch/arm/boot/deflate_xip_data.sh                  |    2 +-
- arch/arm/mach-footbridge/Kconfig                   |    2 +-
- arch/arm64/Kconfig                                 |    4 +-
- arch/arm64/kvm/Kconfig                             |    6 +-
- arch/hexagon/Kconfig                               |   12 +-
- arch/ia64/Kconfig                                  |    6 +-
- arch/ia64/Makefile                                 |    2 +-
- arch/m68k/Kconfig.cpu                              |    6 +-
- arch/m68k/Kconfig.devices                          |    6 +-
- arch/m68k/Kconfig.machine                          |    2 +-
- arch/m68k/Makefile                                 |    8 +-
- arch/mips/Kconfig                                  |    6 +-
- arch/mips/kvm/Kconfig                              |   12 +-
- arch/openrisc/kernel/entry.S                       |    4 +-
- arch/parisc/Kconfig                                |    6 +-
- arch/parisc/Makefile                               |    2 +-
- arch/powerpc/kvm/Kconfig                           |   20 +-
- arch/powerpc/kvm/book3s_hv_nested.c                |    2 +-
- arch/powerpc/platforms/Kconfig                     |    6 +-
- arch/powerpc/platforms/Kconfig.cputype             |   10 +-
- arch/s390/Kconfig                                  |    2 +-
- arch/s390/Kconfig.debug                            |    2 +-
- arch/s390/kvm/Kconfig                              |    6 +-
- arch/sh/Kconfig                                    |    4 +-
- arch/sh/cchips/Kconfig                             |    2 +-
- arch/sh/mm/Kconfig                                 |    2 +-
- arch/sparc/Kconfig                                 |   12 +-
- arch/um/Kconfig                                    |    2 +-
- arch/um/Kconfig.debug                              |    2 +-
- arch/x86/Kconfig                                   |  275 ++-
- arch/x86/Kconfig.cpu                               |   72 +-
- arch/x86/Kconfig.debug                             |   48 +-
- arch/x86/entry/Makefile                            |    8 +-
- arch/x86/entry/calling.h                           |   25 +-
- arch/x86/entry/common.c                            |  440 +++-
- arch/x86/entry/entry_32.S                          |  485 +---
- arch/x86/entry/entry_64.S                          |  840 ++-----
- arch/x86/entry/entry_64_compat.S                   |   55 +-
- arch/x86/entry/thunk_64.S                          |   14 +-
- arch/x86/events/Kconfig                            |    8 +-
- arch/x86/hyperv/hv_init.c                          |    9 +-
- arch/x86/include/asm/acrn.h                        |   11 -
- arch/x86/include/asm/amd_nb.h                      |    1 +
- arch/x86/include/asm/apic.h                        |   33 -
- arch/x86/include/asm/atomic.h                      |   14 +-
- arch/x86/include/asm/bug.h                         |    3 +
- arch/x86/include/asm/cpu_entry_area.h              |   12 +-
- arch/x86/include/asm/debugreg.h                    |   48 +-
- arch/x86/include/asm/desc.h                        |   52 +-
- arch/x86/include/asm/entry_arch.h                  |   56 -
- arch/x86/include/asm/hw_irq.h                      |   22 -
- arch/x86/include/asm/idtentry.h                    |  652 ++++++
- arch/x86/include/asm/irq.h                         |   15 +-
- arch/x86/include/asm/irq_regs.h                    |   32 -
- arch/x86/include/asm/irq_stack.h                   |   53 +
- arch/x86/include/asm/irq_work.h                    |    1 -
- arch/x86/include/asm/irqflags.h                    |   54 +-
- arch/x86/include/asm/kvm_para.h                    |    2 +-
- arch/x86/include/asm/mce.h                         |   30 +-
- arch/x86/include/asm/mshyperv.h                    |   13 -
- arch/x86/include/asm/nospec-branch.h               |    4 +-
- arch/x86/include/asm/processor.h                   |    2 +-
- arch/x86/include/asm/ptrace.h                      |    2 +-
- arch/x86/include/asm/set_memory.h                  |   19 +-
- arch/x86/include/asm/special_insns.h               |   22 +-
- arch/x86/include/asm/text-patching.h               |   11 +-
- arch/x86/include/asm/trace/common.h                |    4 -
- arch/x86/include/asm/trace/irq_vectors.h           |   17 +-
- arch/x86/include/asm/trapnr.h                      |   31 +
- arch/x86/include/asm/traps.h                       |  118 +-
- arch/x86/include/asm/uv/uv_bau.h                   |    8 +-
- arch/x86/include/uapi/asm/mce.h                    |    1 +
- arch/x86/kernel/alternative.c                      |   25 +-
- arch/x86/kernel/amd_nb.c                           |    5 +
- arch/x86/kernel/apic/apic.c                        |   39 +-
- arch/x86/kernel/apic/msi.c                         |    3 +-
- arch/x86/kernel/apic/vector.c                      |    5 +-
- arch/x86/kernel/asm-offsets_64.c                   |    3 -
- arch/x86/kernel/cpu/acrn.c                         |    9 +-
- arch/x86/kernel/cpu/common.c                       |   19 -
- arch/x86/kernel/cpu/mce/amd.c                      |  238 +-
- arch/x86/kernel/cpu/mce/core.c                     |  206 +-
- arch/x86/kernel/cpu/mce/dev-mcelog.c               |    8 +-
- arch/x86/kernel/cpu/mce/inject.c                   |    4 +-
- arch/x86/kernel/cpu/mce/internal.h                 |   12 +-
- arch/x86/kernel/cpu/mce/p5.c                       |    8 +-
- arch/x86/kernel/cpu/mce/severity.c                 |    6 +-
- arch/x86/kernel/cpu/mce/therm_throt.c              |    5 +-
- arch/x86/kernel/cpu/mce/threshold.c                |    5 +-
- arch/x86/kernel/cpu/mce/winchip.c                  |    8 +-
- arch/x86/kernel/cpu/mshyperv.c                     |   22 +-
- arch/x86/kernel/doublefault_32.c                   |   10 +-
- arch/x86/kernel/dumpstack_64.c                     |    7 +-
- arch/x86/kernel/ftrace_64.S                        |    2 +-
- arch/x86/kernel/head_64.S                          |    7 +-
- arch/x86/kernel/hw_breakpoint.c                    |  100 +-
- arch/x86/kernel/idt.c                              |  226 +-
- arch/x86/kernel/irq.c                              |   66 +-
- arch/x86/kernel/irq_32.c                           |    2 +-
- arch/x86/kernel/irq_64.c                           |    6 +
- arch/x86/kernel/irq_work.c                         |    6 +-
- arch/x86/kernel/kprobes/core.c                     |    7 -
- arch/x86/kernel/kprobes/opt.c                      |    4 +-
- arch/x86/kernel/kvm.c                              |   15 +-
- arch/x86/kernel/nmi.c                              |   75 +-
- arch/x86/kernel/smp.c                              |   37 +-
- arch/x86/kernel/tracepoint.c                       |   17 -
- arch/x86/kernel/traps.c                            |  548 +++--
- arch/x86/kernel/unwind_frame.c                     |    8 +-
- arch/x86/kernel/vmlinux.lds.S                      |    1 -
- arch/x86/kvm/Kconfig                               |   12 +-
- arch/x86/kvm/svm/svm.c                             |    2 +-
- arch/x86/kvm/vmx/nested.c                          |    2 +-
- arch/x86/kvm/vmx/vmx.c                             |    2 +-
- arch/x86/mm/cpu_entry_area.c                       |    1 -
- arch/x86/mm/extable.c                              |   15 +-
- arch/x86/mm/fault.c                                |   78 +-
- arch/x86/mm/pti.c                                  |    4 +-
- arch/x86/platform/uv/tlb_uv.c                      |    2 +-
- arch/x86/ras/Kconfig                               |    2 +-
- arch/x86/xen/enlighten_hvm.c                       |   12 +
- arch/x86/xen/enlighten_pv.c                        |   52 +-
- arch/x86/xen/setup.c                               |    4 +-
- arch/x86/xen/smp_pv.c                              |    3 +-
- arch/x86/xen/suspend_hvm.c                         |    3 +-
- arch/x86/xen/xen-asm_32.S                          |   14 +-
- arch/x86/xen/xen-asm_64.S                          |   44 +-
- arch/x86/xen/xen-ops.h                             |    2 -
- block/Kconfig                                      |   22 +-
- block/Kconfig.iosched                              |   10 +-
- block/partitions/Kconfig                           |    6 +-
- drivers/accessibility/Kconfig                      |    4 +-
- drivers/acpi/acpi_extlog.c                         |   19 +-
- drivers/acpi/nfit/core.c                           |    2 +-
- drivers/acpi/nfit/mce.c                            |    1 +
- drivers/android/Kconfig                            |   10 +-
- drivers/ata/Kconfig                                |    2 +-
- drivers/atm/Kconfig                                |   18 +-
- drivers/auxdisplay/Kconfig                         |   54 +-
- drivers/block/Kconfig                              |   26 +-
- drivers/block/paride/Kconfig                       |    8 +-
- drivers/char/Kconfig                               |   22 +-
- drivers/char/agp/Kconfig                           |    6 +-
- drivers/char/hw_random/Kconfig                     |   62 +-
- drivers/char/tpm/Kconfig                           |   30 +-
- drivers/char/tpm/st33zp24/Kconfig                  |    6 +-
- drivers/clk/Kconfig                                |   42 +-
- drivers/clk/imgtec/Kconfig                         |    2 +-
- drivers/clk/keystone/Kconfig                       |    4 +-
- drivers/clk/mediatek/Kconfig                       |   64 +-
- drivers/clk/ti/Kconfig                             |    2 +-
- drivers/clk/versatile/Kconfig                      |    6 +-
- drivers/connector/Kconfig                          |    4 +-
- drivers/cpufreq/Kconfig.x86                        |    4 +-
- drivers/crypto/Kconfig                             |    8 +-
- drivers/crypto/chelsio/Kconfig                     |    6 +-
- drivers/dma-buf/Kconfig                            |    4 +-
- drivers/dma/Kconfig                                |   10 +-
- drivers/dma/mediatek/Kconfig                       |    2 +-
- drivers/dma/qcom/Kconfig                           |    2 +-
- drivers/edac/Kconfig                               |    2 +-
- drivers/edac/amd64_edac.c                          |   22 +-
- drivers/edac/amd64_edac.h                          |    3 +
- drivers/edac/edac_mc.c                             |   61 -
- drivers/edac/i7core_edac.c                         |    5 +-
- drivers/edac/mce_amd.c                             |   28 +-
- drivers/edac/mce_amd.h                             |    2 -
- drivers/edac/pnd2_edac.c                           |    8 +-
- drivers/edac/sb_edac.c                             |    7 +-
- drivers/edac/skx_common.c                          |    3 +-
- drivers/eisa/Kconfig                               |   10 +-
- drivers/firmware/efi/Kconfig                       |    2 +-
- drivers/fsi/Kconfig                                |   16 +-
- drivers/gnss/Kconfig                               |    6 +-
- drivers/gpio/Kconfig                               |    2 +-
- drivers/gpu/drm/bridge/Kconfig                     |   16 +-
- drivers/gpu/drm/omapdrm/dss/Kconfig                |    2 +-
- drivers/greybus/Kconfig                            |    4 +-
- drivers/hid/Kconfig                                |  208 +-
- drivers/hid/i2c-hid/Kconfig                        |    2 +-
- drivers/hid/usbhid/Kconfig                         |    6 +-
- drivers/hsi/Kconfig                                |    2 +-
- drivers/hsi/clients/Kconfig                        |    2 +-
- drivers/hsi/controllers/Kconfig                    |    2 +-
- drivers/hwmon/k10temp.c                            |    1 +
- drivers/i2c/Kconfig                                |    2 +-
- drivers/i2c/busses/Kconfig                         |   60 +-
- drivers/i2c/busses/Makefile                        |   19 +-
- drivers/i2c/busses/i2c-altera.c                    |   20 +-
- drivers/i2c/busses/i2c-at91-core.c                 |    2 +
- drivers/i2c/busses/i2c-at91-master.c               |   49 +-
- drivers/i2c/busses/i2c-at91.h                      |    7 +-
- drivers/i2c/busses/i2c-axxia.c                     |    8 +-
- drivers/i2c/busses/i2c-bcm-iproc.c                 |   10 +-
- drivers/i2c/busses/i2c-bcm-kona.c                  |    7 +-
- drivers/i2c/busses/i2c-brcmstb.c                   |   20 +-
- drivers/i2c/busses/i2c-cadence.c                   |  323 ++-
- drivers/i2c/busses/i2c-cht-wc.c                    |    6 +-
- drivers/i2c/busses/i2c-davinci.c                   |    4 +-
- drivers/i2c/busses/i2c-designware-common.c         |  327 ++-
- drivers/i2c/busses/i2c-designware-core.h           |   75 +-
- drivers/i2c/busses/i2c-designware-master.c         |  192 +-
- drivers/i2c/busses/i2c-designware-pcidrv.c         |   86 +-
- drivers/i2c/busses/i2c-designware-platdrv.c        |  276 +--
- drivers/i2c/busses/i2c-designware-slave.c          |   88 +-
- drivers/i2c/busses/i2c-digicolor.c                 |    4 +-
- drivers/i2c/busses/i2c-efm32.c                     |    4 -
- drivers/i2c/busses/i2c-emev2.c                     |    4 +-
- drivers/i2c/busses/i2c-exynos5.c                   |    8 +-
- drivers/i2c/busses/i2c-hix5hd2.c                   |    4 +-
- drivers/i2c/busses/i2c-i801.c                      |    6 +
- drivers/i2c/busses/i2c-icy.c                       |    1 +
- drivers/i2c/busses/i2c-img-scb.c                   |    8 +-
- drivers/i2c/busses/i2c-imx-lpi2c.c                 |    4 +-
- drivers/i2c/busses/i2c-jz4780.c                    |    4 +-
- drivers/i2c/busses/i2c-lpc2k.c                     |    8 +-
- drivers/i2c/busses/i2c-meson.c                     |    8 +-
- drivers/i2c/busses/i2c-mt65xx.c                    |  329 ++-
- drivers/i2c/busses/i2c-mv64xxx.c                   |    4 +-
- drivers/i2c/busses/i2c-npcm7xx.c                   | 2342 ++++++++++++++++++++
- drivers/i2c/busses/i2c-nvidia-gpu.c                |    5 +-
- drivers/i2c/busses/i2c-octeon-platdrv.c            |    4 +-
- drivers/i2c/busses/i2c-omap.c                      |    4 +-
- drivers/i2c/busses/i2c-owl.c                       |    8 +-
- drivers/i2c/busses/i2c-pca-platform.c              |    3 +-
- drivers/i2c/busses/i2c-piix4.c                     |    3 +-
- drivers/i2c/busses/i2c-pnx.c                       |    1 -
- drivers/i2c/busses/i2c-powermac.c                  |   18 +-
- drivers/i2c/busses/i2c-pxa.c                       |  870 +++++---
- drivers/i2c/busses/i2c-qcom-cci.c                  |  791 +++++++
- drivers/i2c/busses/i2c-qup.c                       |   18 +-
- drivers/i2c/busses/i2c-rcar.c                      |    4 +-
- drivers/i2c/busses/i2c-rk3x.c                      |    8 +-
- drivers/i2c/busses/i2c-s3c2410.c                   |    2 +-
- drivers/i2c/busses/i2c-sh_mobile.c                 |    7 +-
- drivers/i2c/busses/i2c-sirf.c                      |    4 +-
- drivers/i2c/busses/i2c-sprd.c                      |    4 +-
- drivers/i2c/busses/i2c-stm32.c                     |   10 +-
- drivers/i2c/busses/i2c-stm32f4.c                   |    4 +-
- drivers/i2c/busses/i2c-stm32f7.c                   |  138 +-
- drivers/i2c/busses/i2c-stu300.c                    |    4 +-
- drivers/i2c/busses/i2c-sun6i-p2wi.c                |    8 +-
- drivers/i2c/busses/i2c-synquacer.c                 |    8 +-
- drivers/i2c/busses/i2c-tegra.c                     |  248 ++-
- drivers/i2c/busses/i2c-uniphier-f.c                |    4 +-
- drivers/i2c/busses/i2c-uniphier.c                  |    4 +-
- drivers/i2c/busses/i2c-xlp9xx.c                    |    8 +-
- drivers/i2c/busses/i2c-xlr.c                       |    4 +-
- drivers/i2c/busses/i2c-zx2967.c                    |    4 +-
- drivers/i2c/i2c-core-acpi.c                        |    6 +-
- drivers/i2c/i2c-core-base.c                        |   72 +-
- drivers/i2c/i2c-core.h                             |    6 +-
- drivers/i2c/i2c-slave-eeprom.c                     |   39 +-
- drivers/i2c/i2c-smbus.c                            |  104 +-
- drivers/i2c/muxes/i2c-mux-pca954x.c                |   44 +-
- drivers/ide/Kconfig                                |   10 +-
- drivers/iio/dac/Kconfig                            |    2 +-
- drivers/infiniband/Kconfig                         |   14 +-
- drivers/infiniband/hw/bnxt_re/Kconfig              |    2 +-
- drivers/infiniband/hw/cxgb4/Kconfig                |    2 +-
- drivers/infiniband/hw/hfi1/Kconfig                 |    6 +-
- drivers/infiniband/hw/hns/Kconfig                  |    6 +-
- drivers/infiniband/hw/i40iw/Kconfig                |    2 +-
- drivers/infiniband/hw/mlx4/Kconfig                 |    2 +-
- drivers/infiniband/hw/mlx5/Kconfig                 |    2 +-
- drivers/infiniband/hw/mthca/Kconfig                |    4 +-
- drivers/infiniband/hw/ocrdma/Kconfig               |    2 +-
- drivers/infiniband/hw/qedr/Kconfig                 |    2 +-
- drivers/infiniband/hw/qib/Kconfig                  |    4 +-
- drivers/infiniband/hw/usnic/Kconfig                |    2 +-
- drivers/infiniband/hw/vmw_pvrdma/Kconfig           |    2 +-
- drivers/infiniband/sw/rdmavt/Kconfig               |    2 +-
- drivers/infiniband/sw/rxe/Kconfig                  |    2 +-
- drivers/infiniband/ulp/ipoib/Kconfig               |    8 +-
- drivers/infiniband/ulp/iser/Kconfig                |    2 +-
- drivers/infiniband/ulp/isert/Kconfig               |    2 +-
- drivers/infiniband/ulp/opa_vnic/Kconfig            |    2 +-
- drivers/infiniband/ulp/srp/Kconfig                 |    2 +-
- drivers/infiniband/ulp/srpt/Kconfig                |    2 +-
- drivers/input/gameport/Kconfig                     |    2 +-
- drivers/input/joystick/Kconfig                     |    8 +-
- drivers/input/serio/Kconfig                        |    2 +-
- drivers/iommu/Kconfig                              |   18 +-
- drivers/ipack/Kconfig                              |    2 +-
- drivers/isdn/Kconfig                               |    2 +-
- drivers/macintosh/Kconfig                          |    2 +-
- drivers/md/Kconfig                                 |   82 +-
- drivers/md/persistent-data/Kconfig                 |    2 +-
- drivers/media/cec/Kconfig                          |    2 +-
- drivers/media/cec/platform/Kconfig                 |    2 +-
- .../media/common/videobuf2/videobuf2-dma-contig.c  |   20 +-
- drivers/media/platform/s5p-mfc/s5p_mfc.c           |    6 +-
- drivers/media/v4l2-core/v4l2-ctrls.c               |    2 +-
- drivers/message/fusion/Kconfig                     |   14 +-
- drivers/mfd/Kconfig                                |   10 +-
- drivers/misc/Kconfig                               |   18 +-
- drivers/misc/echo/Kconfig                          |    2 +-
- drivers/mmc/host/Kconfig                           |    2 +-
- drivers/net/Kconfig                                |   46 +-
- drivers/net/appletalk/Kconfig                      |    4 +-
- drivers/net/arcnet/Kconfig                         |    8 +-
- drivers/net/caif/Kconfig                           |   10 +-
- drivers/net/can/Kconfig                            |   30 +-
- drivers/net/can/c_can/Kconfig                      |    4 +-
- drivers/net/can/cc770/Kconfig                      |    4 +-
- drivers/net/can/ifi_canfd/Kconfig                  |    2 +-
- drivers/net/can/m_can/Kconfig                      |    6 +-
- drivers/net/can/mscan/Kconfig                      |    4 +-
- drivers/net/can/peak_canfd/Kconfig                 |    2 +-
- drivers/net/can/rcar/Kconfig                       |    4 +-
- drivers/net/can/sja1000/Kconfig                    |   18 +-
- drivers/net/can/softing/Kconfig                    |    4 +-
- drivers/net/can/spi/Kconfig                        |    4 +-
- drivers/net/can/usb/Kconfig                        |   16 +-
- drivers/net/dsa/Kconfig                            |   26 +-
- drivers/net/dsa/qca/Kconfig                        |    2 +-
- drivers/net/ethernet/3com/Kconfig                  |   14 +-
- drivers/net/ethernet/8390/Kconfig                  |   32 +-
- drivers/net/ethernet/Kconfig                       |   18 +-
- drivers/net/ethernet/adaptec/Kconfig               |    4 +-
- drivers/net/ethernet/aeroflex/Kconfig              |    2 +-
- drivers/net/ethernet/agere/Kconfig                 |    4 +-
- drivers/net/ethernet/alacritech/Kconfig            |    4 +-
- drivers/net/ethernet/allwinner/Kconfig             |    4 +-
- drivers/net/ethernet/alteon/Kconfig                |    6 +-
- drivers/net/ethernet/altera/Kconfig                |    2 +-
- drivers/net/ethernet/amazon/Kconfig                |    4 +-
- drivers/net/ethernet/amd/Kconfig                   |   34 +-
- drivers/net/ethernet/apple/Kconfig                 |   10 +-
- drivers/net/ethernet/aquantia/Kconfig              |    4 +-
- drivers/net/ethernet/arc/Kconfig                   |    6 +-
- drivers/net/ethernet/atheros/Kconfig               |   10 +-
- drivers/net/ethernet/broadcom/Kconfig              |   32 +-
- drivers/net/ethernet/brocade/Kconfig               |    2 +-
- drivers/net/ethernet/brocade/bna/Kconfig           |    2 +-
- drivers/net/ethernet/cadence/Kconfig               |    8 +-
- drivers/net/ethernet/cavium/Kconfig                |   16 +-
- drivers/net/ethernet/chelsio/Kconfig               |   18 +-
- drivers/net/ethernet/cirrus/Kconfig                |    6 +-
- drivers/net/ethernet/cisco/Kconfig                 |    2 +-
- drivers/net/ethernet/cisco/enic/Kconfig            |    2 +-
- drivers/net/ethernet/cortina/Kconfig               |    4 +-
- drivers/net/ethernet/davicom/Kconfig               |    4 +-
- drivers/net/ethernet/dec/Kconfig                   |    2 +-
- drivers/net/ethernet/dec/tulip/Kconfig             |   26 +-
- drivers/net/ethernet/dlink/Kconfig                 |    8 +-
- drivers/net/ethernet/emulex/Kconfig                |    2 +-
- drivers/net/ethernet/ezchip/Kconfig                |    4 +-
- drivers/net/ethernet/faraday/Kconfig               |    6 +-
- drivers/net/ethernet/freescale/Kconfig             |   16 +-
- drivers/net/ethernet/freescale/dpaa/Kconfig        |    2 +-
- drivers/net/ethernet/fujitsu/Kconfig               |    4 +-
- drivers/net/ethernet/hisilicon/Kconfig             |   22 +-
- drivers/net/ethernet/huawei/Kconfig                |    2 +-
- drivers/net/ethernet/huawei/hinic/Kconfig          |    2 +-
- drivers/net/ethernet/i825xx/Kconfig                |   14 +-
- drivers/net/ethernet/ibm/Kconfig                   |    8 +-
- drivers/net/ethernet/intel/Kconfig                 |   46 +-
- drivers/net/ethernet/marvell/Kconfig               |   24 +-
- drivers/net/ethernet/marvell/octeontx2/Kconfig     |    2 +-
- drivers/net/ethernet/mediatek/Kconfig              |    4 +-
- drivers/net/ethernet/mellanox/Kconfig              |    2 +-
- drivers/net/ethernet/mellanox/mlx4/Kconfig         |    8 +-
- drivers/net/ethernet/mellanox/mlx5/core/Kconfig    |   18 +-
- drivers/net/ethernet/mellanox/mlxfw/Kconfig        |    2 +-
- drivers/net/ethernet/mellanox/mlxsw/Kconfig        |   20 +-
- drivers/net/ethernet/micrel/Kconfig                |   10 +-
- drivers/net/ethernet/microchip/Kconfig             |   10 +-
- drivers/net/ethernet/moxa/Kconfig                  |    4 +-
- drivers/net/ethernet/myricom/Kconfig               |    6 +-
- drivers/net/ethernet/natsemi/Kconfig               |   12 +-
- drivers/net/ethernet/neterion/Kconfig              |    8 +-
- drivers/net/ethernet/netronome/Kconfig             |    8 +-
- drivers/net/ethernet/nvidia/Kconfig                |    4 +-
- drivers/net/ethernet/oki-semi/Kconfig              |    2 +-
- drivers/net/ethernet/oki-semi/pch_gbe/Kconfig      |    2 +-
- drivers/net/ethernet/packetengines/Kconfig         |    6 +-
- drivers/net/ethernet/pasemi/Kconfig                |    4 +-
- drivers/net/ethernet/qlogic/Kconfig                |   20 +-
- drivers/net/ethernet/qualcomm/Kconfig              |    8 +-
- drivers/net/ethernet/qualcomm/rmnet/Kconfig        |    2 +-
- drivers/net/ethernet/rdc/Kconfig                   |    4 +-
- drivers/net/ethernet/realtek/Kconfig               |   18 +-
- drivers/net/ethernet/renesas/Kconfig               |    4 +-
- drivers/net/ethernet/rocker/Kconfig                |    4 +-
- drivers/net/ethernet/samsung/Kconfig               |    4 +-
- drivers/net/ethernet/seeq/Kconfig                  |    6 +-
- drivers/net/ethernet/sfc/Kconfig                   |   12 +-
- drivers/net/ethernet/sfc/falcon/Kconfig            |    4 +-
- drivers/net/ethernet/sgi/Kconfig                   |    4 +-
- drivers/net/ethernet/silan/Kconfig                 |    4 +-
- drivers/net/ethernet/sis/Kconfig                   |    6 +-
- drivers/net/ethernet/smsc/Kconfig                  |   18 +-
- drivers/net/ethernet/socionext/Kconfig             |    6 +-
- drivers/net/ethernet/stmicro/Kconfig               |    2 +-
- drivers/net/ethernet/stmicro/stmmac/Kconfig        |   24 +-
- drivers/net/ethernet/sun/Kconfig                   |   18 +-
- drivers/net/ethernet/synopsys/Kconfig              |    6 +-
- drivers/net/ethernet/tehuti/Kconfig                |    4 +-
- drivers/net/ethernet/ti/Kconfig                    |   20 +-
- drivers/net/ethernet/toshiba/Kconfig               |    8 +-
- drivers/net/ethernet/tundra/Kconfig                |    4 +-
- drivers/net/ethernet/via/Kconfig                   |    8 +-
- drivers/net/ethernet/wiznet/Kconfig                |   14 +-
- drivers/net/ethernet/xilinx/Kconfig                |    8 +-
- drivers/net/ethernet/xircom/Kconfig                |    4 +-
- drivers/net/ethernet/xscale/Kconfig                |    4 +-
- drivers/net/fddi/Kconfig                           |    8 +-
- drivers/net/hamradio/Kconfig                       |   16 +-
- drivers/net/hippi/Kconfig                          |    6 +-
- drivers/net/ieee802154/Kconfig                     |   24 +-
- drivers/net/phy/Kconfig                            |   78 +-
- drivers/net/plip/Kconfig                           |    2 +-
- drivers/net/ppp/Kconfig                            |   24 +-
- drivers/net/slip/Kconfig                           |   10 +-
- drivers/net/team/Kconfig                           |   12 +-
- drivers/net/usb/Kconfig                            |   12 +-
- drivers/net/wan/Kconfig                            |   16 +-
- drivers/net/wireless/Kconfig                       |   10 +-
- drivers/net/wireless/admtek/Kconfig                |    4 +-
- drivers/net/wireless/ath/Kconfig                   |   10 +-
- drivers/net/wireless/ath/ar5523/Kconfig            |    2 +-
- drivers/net/wireless/ath/ath10k/Kconfig            |   22 +-
- drivers/net/wireless/ath/ath11k/Kconfig            |    8 +-
- drivers/net/wireless/ath/ath5k/Kconfig             |   12 +-
- drivers/net/wireless/ath/ath6kl/Kconfig            |   12 +-
- drivers/net/wireless/ath/ath9k/Kconfig             |   30 +-
- drivers/net/wireless/ath/wcn36xx/Kconfig           |    4 +-
- drivers/net/wireless/ath/wil6210/Kconfig           |    8 +-
- drivers/net/wireless/atmel/Kconfig                 |   10 +-
- drivers/net/wireless/broadcom/Kconfig              |    2 +-
- drivers/net/wireless/broadcom/b43/Kconfig          |   18 +-
- drivers/net/wireless/broadcom/b43legacy/Kconfig    |   10 +-
- drivers/net/wireless/broadcom/brcm80211/Kconfig    |    6 +-
- drivers/net/wireless/cisco/Kconfig                 |    6 +-
- drivers/net/wireless/intel/Kconfig                 |    2 +-
- drivers/net/wireless/intel/ipw2x00/Kconfig         |   18 +-
- drivers/net/wireless/intel/iwlegacy/Kconfig        |    8 +-
- drivers/net/wireless/intel/iwlwifi/Kconfig         |    6 +-
- drivers/net/wireless/intersil/Kconfig              |    4 +-
- drivers/net/wireless/intersil/hostap/Kconfig       |   12 +-
- drivers/net/wireless/intersil/orinoco/Kconfig      |   12 +-
- drivers/net/wireless/intersil/p54/Kconfig          |   10 +-
- drivers/net/wireless/marvell/Kconfig               |    4 +-
- drivers/net/wireless/marvell/libertas/Kconfig      |   12 +-
- drivers/net/wireless/marvell/libertas_tf/Kconfig   |    6 +-
- drivers/net/wireless/marvell/mwifiex/Kconfig       |    8 +-
- drivers/net/wireless/mediatek/Kconfig              |    2 +-
- drivers/net/wireless/mediatek/mt7601u/Kconfig      |    2 +-
- drivers/net/wireless/ralink/Kconfig                |    2 +-
- drivers/net/wireless/ralink/rt2x00/Kconfig         |   42 +-
- drivers/net/wireless/realtek/Kconfig               |    2 +-
- drivers/net/wireless/realtek/rtl818x/Kconfig       |    4 +-
- drivers/net/wireless/realtek/rtl8xxxu/Kconfig      |    4 +-
- drivers/net/wireless/realtek/rtlwifi/Kconfig       |   22 +-
- drivers/net/wireless/rsi/Kconfig                   |   12 +-
- drivers/net/wireless/st/Kconfig                    |    2 +-
- drivers/net/wireless/ti/Kconfig                    |    4 +-
- drivers/net/wireless/ti/wl1251/Kconfig             |    6 +-
- drivers/net/wireless/ti/wl12xx/Kconfig             |    2 +-
- drivers/net/wireless/ti/wl18xx/Kconfig             |    2 +-
- drivers/net/wireless/ti/wlcore/Kconfig             |    6 +-
- drivers/net/wireless/zydas/Kconfig                 |    4 +-
- drivers/net/wireless/zydas/zd1211rw/Kconfig        |    4 +-
- drivers/nfc/fdp/Kconfig                            |    4 +-
- drivers/nfc/microread/Kconfig                      |    6 +-
- drivers/nfc/nxp-nci/Kconfig                        |    4 +-
- drivers/nfc/pn533/Kconfig                          |    6 +-
- drivers/nfc/pn544/Kconfig                          |    6 +-
- drivers/nfc/s3fwrn5/Kconfig                        |    4 +-
- drivers/nfc/st-nci/Kconfig                         |    6 +-
- drivers/nfc/st21nfca/Kconfig                       |    4 +-
- drivers/nvdimm/blk.c                               |    5 +-
- drivers/nvdimm/btt.c                               |    3 +-
- drivers/nvdimm/pmem.c                              |    6 +-
- drivers/nvme/host/Kconfig                          |    4 +-
- drivers/opp/Kconfig                                |    2 +-
- drivers/parport/Kconfig                            |    2 +-
- drivers/pci/controller/Kconfig                     |    2 +-
- drivers/pci/hotplug/Kconfig                        |    2 +-
- drivers/pcmcia/Kconfig                             |    8 +-
- drivers/platform/chrome/Kconfig                    |    8 +-
- drivers/platform/mellanox/Kconfig                  |    4 +-
- drivers/platform/mellanox/mlxreg-hotplug.c         |   11 +-
- drivers/platform/x86/Kconfig                       |  142 +-
- drivers/pnp/Kconfig                                |    2 +-
- drivers/pnp/pnpbios/Kconfig                        |    4 +-
- drivers/powercap/Kconfig                           |    2 +-
- drivers/pps/Kconfig                                |    2 +-
- drivers/ptp/Kconfig                                |    2 +-
- drivers/rapidio/Kconfig                            |    4 +-
- drivers/rapidio/devices/Kconfig                    |    2 +-
- drivers/rapidio/switches/Kconfig                   |   10 +-
- drivers/ras/cec.c                                  |   33 +-
- drivers/sbus/char/Kconfig                          |    2 +-
- drivers/scsi/Kconfig                               |   80 +-
- drivers/scsi/aic7xxx/Kconfig.aic79xx               |    4 +-
- drivers/scsi/aic7xxx/Kconfig.aic7xxx               |    6 +-
- drivers/scsi/arm/acornscsi.c                       |    4 +-
- drivers/scsi/bnx2fc/Kconfig                        |    2 +-
- drivers/scsi/bnx2i/Kconfig                         |    2 +-
- drivers/scsi/cxgbi/cxgb3i/Kconfig                  |    2 +-
- drivers/scsi/cxgbi/cxgb4i/Kconfig                  |    2 +-
- drivers/scsi/cxlflash/main.c                       |    3 -
- drivers/scsi/esas2r/Kconfig                        |    2 +-
- drivers/scsi/hpsa.c                                |  199 +-
- drivers/scsi/ibmvscsi/ibmvscsi.c                   |    2 +
- drivers/scsi/iscsi_boot_sysfs.c                    |    2 +-
- drivers/scsi/mpt3sas/Kconfig                       |    8 +-
- drivers/scsi/mpt3sas/mpt3sas_base.c                |    5 +-
- drivers/scsi/qedf/Kconfig                          |    2 +-
- drivers/scsi/qedf/qedf_fip.c                       |    2 +-
- drivers/scsi/qedi/Kconfig                          |    2 +-
- drivers/scsi/qla2xxx/Kconfig                       |    6 +-
- drivers/scsi/qla4xxx/Kconfig                       |    2 +-
- drivers/scsi/smartpqi/Kconfig                      |    2 +-
- drivers/scsi/sr.c                                  |    7 +-
- drivers/scsi/st.c                                  |   20 +-
- drivers/scsi/storvsc_drv.c                         |    3 -
- drivers/scsi/ufs/Kconfig                           |   12 +-
- drivers/scsi/ufs/ufshcd.c                          |    6 +-
- drivers/sfi/Kconfig                                |    2 +-
- drivers/soc/aspeed/Kconfig                         |    2 +-
- drivers/staging/Kconfig                            |    2 +-
- drivers/staging/greybus/Kconfig                    |   40 +-
- drivers/staging/media/atomisp/Kconfig              |    4 +-
- drivers/staging/media/atomisp/Makefile             |   20 +-
- drivers/staging/media/atomisp/TODO                 |  154 +-
- drivers/staging/media/atomisp/i2c/Kconfig          |   17 +-
- drivers/staging/media/atomisp/i2c/atomisp-gc0310.c |   13 +-
- drivers/staging/media/atomisp/i2c/atomisp-gc2235.c |   12 +-
- .../media/atomisp/i2c/atomisp-libmsrlisthelper.c   |    1 +
- drivers/staging/media/atomisp/i2c/atomisp-lm3554.c |   12 +-
- .../staging/media/atomisp/i2c/atomisp-mt9m114.c    |   12 +-
- drivers/staging/media/atomisp/i2c/atomisp-ov2680.c |   14 +-
- drivers/staging/media/atomisp/i2c/atomisp-ov2722.c |   12 +-
- drivers/staging/media/atomisp/i2c/gc0310.h         |    1 +
- drivers/staging/media/atomisp/i2c/gc2235.h         |    1 +
- drivers/staging/media/atomisp/i2c/mt9m114.h        |    1 +
- drivers/staging/media/atomisp/i2c/ov2680.h         |    3 +
- drivers/staging/media/atomisp/i2c/ov2722.h         |    1 +
- drivers/staging/media/atomisp/i2c/ov5693/Kconfig   |    3 +-
- drivers/staging/media/atomisp/i2c/ov5693/ad5823.h  |    1 +
- .../media/atomisp/i2c/ov5693/atomisp-ov5693.c      |   16 +-
- drivers/staging/media/atomisp/i2c/ov5693/ov5693.h  |    1 +
- drivers/staging/media/atomisp/include/hmm/hmm.h    |    8 +-
- drivers/staging/media/atomisp/include/hmm/hmm_bo.h |   12 +-
- .../staging/media/atomisp/include/hmm/hmm_common.h |    1 +
- .../staging/media/atomisp/include/hmm/hmm_pool.h   |    1 +
- drivers/staging/media/atomisp/include/hmm/hmm_vm.h |   65 -
- .../staging/media/atomisp/include/linux/atomisp.h  |   10 +-
- .../atomisp/include/linux/atomisp_gmin_platform.h  |    1 +
- .../media/atomisp/include/linux/atomisp_platform.h |   22 +-
- .../media/atomisp/include/linux/libmsrlisthelper.h |    1 +
- .../staging/media/atomisp/include/media/lm3554.h   |    1 +
- .../staging/media/atomisp/include/mmu/isp_mmu.h    |    1 +
- .../media/atomisp/include/mmu/sh_mmu_mrfld.h       |    1 +
- drivers/staging/media/atomisp/pci/atomisp-regs.h   |    1 +
- drivers/staging/media/atomisp/pci/atomisp_acc.c    |   44 +-
- drivers/staging/media/atomisp/pci/atomisp_acc.h    |    1 +
- drivers/staging/media/atomisp/pci/atomisp_cmd.c    |  794 +++----
- drivers/staging/media/atomisp/pci/atomisp_cmd.h    |   23 +-
- drivers/staging/media/atomisp/pci/atomisp_common.h |    7 +-
- drivers/staging/media/atomisp/pci/atomisp_compat.h |  282 +--
- .../media/atomisp/pci/atomisp_compat_css20.c       |  828 +++----
- .../media/atomisp/pci/atomisp_compat_css20.h       |  148 +-
- .../media/atomisp/pci/atomisp_compat_ioctl32.c     |  935 ++++----
- .../media/atomisp/pci/atomisp_compat_ioctl32.h     |    1 +
- drivers/staging/media/atomisp/pci/atomisp_csi2.c   |    5 +-
- drivers/staging/media/atomisp/pci/atomisp_csi2.h   |    1 +
- .../staging/media/atomisp/pci/atomisp_dfs_tables.h |    1 +
- drivers/staging/media/atomisp/pci/atomisp_drvfs.c  |    6 +-
- drivers/staging/media/atomisp/pci/atomisp_drvfs.h  |    1 +
- drivers/staging/media/atomisp/pci/atomisp_file.c   |   10 +-
- drivers/staging/media/atomisp/pci/atomisp_file.h   |    1 +
- drivers/staging/media/atomisp/pci/atomisp_fops.c   |  123 +-
- drivers/staging/media/atomisp/pci/atomisp_fops.h   |    5 +-
- .../media/atomisp/pci/atomisp_gmin_platform.c      |  147 +-
- drivers/staging/media/atomisp/pci/atomisp_helper.h |   28 -
- .../staging/media/atomisp/pci/atomisp_internal.h   |    1 +
- drivers/staging/media/atomisp/pci/atomisp_ioctl.c  |  216 +-
- drivers/staging/media/atomisp/pci/atomisp_ioctl.h  |    3 +-
- drivers/staging/media/atomisp/pci/atomisp_subdev.c |   55 +-
- drivers/staging/media/atomisp/pci/atomisp_subdev.h |   24 +-
- drivers/staging/media/atomisp/pci/atomisp_tables.h |   19 +-
- drivers/staging/media/atomisp/pci/atomisp_tpg.c    |    3 +-
- drivers/staging/media/atomisp/pci/atomisp_tpg.h    |    1 +
- .../media/atomisp/pci/atomisp_trace_event.h        |    7 +-
- drivers/staging/media/atomisp/pci/atomisp_v4l2.c   |  173 +-
- drivers/staging/media/atomisp/pci/atomisp_v4l2.h   |    1 +
- .../pci/base/circbuf/interface/ia_css_circbuf.h    |    1 +
- .../base/circbuf/interface/ia_css_circbuf_comm.h   |    1 +
- .../base/circbuf/interface/ia_css_circbuf_desc.h   |    1 +
- .../media/atomisp/pci/base/circbuf/src/circbuf.c   |    1 +
- .../pci/base/refcount/interface/ia_css_refcount.h  |   18 +-
- .../media/atomisp/pci/base/refcount/src/refcount.c |   36 +-
- drivers/staging/media/atomisp/pci/bits.h           |    1 +
- .../camera/pipe/interface/ia_css_pipe_binarydesc.h |   17 +-
- .../camera/pipe/interface/ia_css_pipe_stagedesc.h  |    1 +
- .../pci/camera/pipe/interface/ia_css_pipe_util.h   |    1 +
- .../atomisp/pci/camera/pipe/src/pipe_binarydesc.c  |   33 +-
- .../atomisp/pci/camera/pipe/src/pipe_stagedesc.c   |    1 +
- .../media/atomisp/pci/camera/pipe/src/pipe_util.c  |    1 +
- .../pci/camera/util/interface/ia_css_util.h        |   22 +-
- .../media/atomisp/pci/camera/util/src/util.c       |   68 +-
- drivers/staging/media/atomisp/pci/cell_params.h    |    1 +
- .../pci/css_2400_system/hive/ia_css_isp_configs.c  |    1 +
- .../pci/css_2400_system/hive/ia_css_isp_params.c   |    1 +
- .../pci/css_2400_system/hive/ia_css_isp_states.c   |    3 +-
- .../atomisp/pci/css_2401_system/csi_rx_global.h    |    1 +
- .../pci/css_2401_system/hive/ia_css_isp_configs.c  |    2 +-
- .../pci/css_2401_system/hive/ia_css_isp_params.c   |    1 +
- .../pci/css_2401_system/hive/ia_css_isp_states.c   |    3 +-
- .../atomisp/pci/css_2401_system/host/csi_rx.c      |    1 +
- .../pci/css_2401_system/host/csi_rx_local.h        |    1 +
- .../pci/css_2401_system/host/csi_rx_private.h      |    5 +-
- .../atomisp/pci/css_2401_system/host/ibuf_ctrl.c   |    1 +
- .../pci/css_2401_system/host/ibuf_ctrl_local.h     |    1 +
- .../pci/css_2401_system/host/ibuf_ctrl_private.h   |    1 +
- .../atomisp/pci/css_2401_system/host/isys_dma.c    |    1 +
- .../pci/css_2401_system/host/isys_dma_local.h      |    1 +
- .../pci/css_2401_system/host/isys_dma_private.h    |    1 +
- .../atomisp/pci/css_2401_system/host/isys_irq.c    |    1 +
- .../pci/css_2401_system/host/isys_irq_local.h      |    1 +
- .../pci/css_2401_system/host/isys_irq_private.h    |    1 +
- .../pci/css_2401_system/host/isys_stream2mmio.c    |    1 +
- .../css_2401_system/host/isys_stream2mmio_local.h  |    1 +
- .../host/isys_stream2mmio_private.h                |    1 +
- .../pci/css_2401_system/host/pixelgen_local.h      |    1 +
- .../pci/css_2401_system/host/pixelgen_private.h    |    5 +-
- .../css_2401_system/hrt/PixelGen_SysBlock_defs.h   |    1 +
- .../pci/css_2401_system/hrt/ibuf_cntrl_defs.h      |    1 +
- .../css_2401_system/hrt/mipi_backend_common_defs.h |    1 +
- .../pci/css_2401_system/hrt/mipi_backend_defs.h    |    1 +
- .../atomisp/pci/css_2401_system/hrt/rx_csi_defs.h  |    1 +
- .../pci/css_2401_system/hrt/stream2mmio_defs.h     |    1 +
- .../atomisp/pci/css_2401_system/ibuf_ctrl_global.h |    1 +
- .../atomisp/pci/css_2401_system/isys_dma_global.h  |    2 +
- .../atomisp/pci/css_2401_system/isys_irq_global.h  |    1 +
- .../pci/css_2401_system/isys_stream2mmio_global.h  |    1 +
- .../atomisp/pci/css_2401_system/pixelgen_global.h  |    1 +
- .../atomisp/pci/css_receiver_2400_common_defs.h    |    1 +
- .../media/atomisp/pci/css_receiver_2400_defs.h     |    1 +
- drivers/staging/media/atomisp/pci/css_trace.h      |    2 +-
- drivers/staging/media/atomisp/pci/defs.h           |    1 +
- drivers/staging/media/atomisp/pci/dma_v2_defs.h    |    1 +
- drivers/staging/media/atomisp/pci/gdc_v2_defs.h    |    1 +
- drivers/staging/media/atomisp/pci/gp_timer_defs.h  |    1 +
- .../staging/media/atomisp/pci/gpio_block_defs.h    |    1 +
- .../atomisp/pci/hive_isp_css_2401_irq_types_hrt.h  |   68 -
- .../atomisp/pci/hive_isp_css_common/debug_global.h |    1 +
- .../atomisp/pci/hive_isp_css_common/dma_global.h   |    1 +
- .../pci/hive_isp_css_common/event_fifo_global.h    |    1 +
- .../pci/hive_isp_css_common/fifo_monitor_global.h  |    1 +
- .../atomisp/pci/hive_isp_css_common/gdc_global.h   |    1 +
- .../pci/hive_isp_css_common/gp_device_global.h     |    1 +
- .../pci/hive_isp_css_common/gp_timer_global.h      |    1 +
- .../atomisp/pci/hive_isp_css_common/gpio_global.h  |    1 +
- .../atomisp/pci/hive_isp_css_common/hmem_global.h  |    1 +
- .../atomisp/pci/hive_isp_css_common/host/debug.c   |   17 +-
- .../pci/hive_isp_css_common/host/debug_local.h     |    1 +
- .../pci/hive_isp_css_common/host/debug_private.h   |   11 +-
- .../atomisp/pci/hive_isp_css_common/host/dma.c     |    1 +
- .../pci/hive_isp_css_common/host/dma_local.h       |    1 +
- .../pci/hive_isp_css_common/host/dma_private.h     |    1 +
- .../pci/hive_isp_css_common/host/event_fifo.c      |    1 +
- .../hive_isp_css_common/host/event_fifo_local.h    |    1 +
- .../hive_isp_css_common/host/event_fifo_private.h  |    1 +
- .../pci/hive_isp_css_common/host/fifo_monitor.c    |    1 +
- .../hive_isp_css_common/host/fifo_monitor_local.h  |    1 +
- .../host/fifo_monitor_private.h                    |    1 +
- .../atomisp/pci/hive_isp_css_common/host/gdc.c     |    1 +
- .../pci/hive_isp_css_common/host/gdc_local.h       |    1 +
- .../pci/hive_isp_css_common/host/gdc_private.h     |    1 +
- .../pci/hive_isp_css_common/host/gp_device.c       |    1 +
- .../pci/hive_isp_css_common/host/gp_device_local.h |    1 +
- .../hive_isp_css_common/host/gp_device_private.h   |    1 +
- .../pci/hive_isp_css_common/host/gp_timer.c        |    1 +
- .../pci/hive_isp_css_common/host/gp_timer_local.h  |    1 +
- .../hive_isp_css_common/host/gp_timer_private.h    |    1 +
- .../pci/hive_isp_css_common/host/gpio_local.h      |    1 +
- .../pci/hive_isp_css_common/host/gpio_private.h    |    1 +
- .../atomisp/pci/hive_isp_css_common/host/hmem.c    |    1 +
- .../pci/hive_isp_css_common/host/hmem_local.h      |    1 +
- .../pci/hive_isp_css_common/host/hmem_private.h    |    1 +
- .../pci/hive_isp_css_common/host/input_formatter.c |    1 +
- .../host/input_formatter_local.h                   |    1 +
- .../host/input_formatter_private.h                 |    1 +
- .../pci/hive_isp_css_common/host/input_system.c    |   11 +-
- .../atomisp/pci/hive_isp_css_common/host/irq.c     |   32 +-
- .../pci/hive_isp_css_common/host/irq_local.h       |   18 +-
- .../pci/hive_isp_css_common/host/irq_private.h     |    1 +
- .../atomisp/pci/hive_isp_css_common/host/isp.c     |    6 +-
- .../pci/hive_isp_css_common/host/isp_local.h       |    1 +
- .../pci/hive_isp_css_common/host/isp_private.h     |    1 +
- .../atomisp/pci/hive_isp_css_common/host/mmu.c     |    1 +
- .../pci/hive_isp_css_common/host/mmu_local.h       |    1 +
- .../atomisp/pci/hive_isp_css_common/host/sp.c      |    1 +
- .../pci/hive_isp_css_common/host/sp_local.h        |    1 +
- .../pci/hive_isp_css_common/host/sp_private.h      |    1 +
- .../pci/hive_isp_css_common/host/timed_ctrl.c      |    1 +
- .../hive_isp_css_common/host/timed_ctrl_local.h    |    1 +
- .../hive_isp_css_common/host/timed_ctrl_private.h  |    1 +
- .../pci/hive_isp_css_common/host/vamem_local.h     |    1 +
- .../atomisp/pci/hive_isp_css_common/host/vmem.c    |    6 +-
- .../pci/hive_isp_css_common/host/vmem_local.h      |    1 +
- .../pci/hive_isp_css_common/host/vmem_private.h    |    1 +
- .../hive_isp_css_common/input_formatter_global.h   |    3 +-
- .../atomisp/pci/hive_isp_css_common/irq_global.h   |   13 +-
- .../atomisp/pci/hive_isp_css_common/isp_global.h   |   15 +-
- .../atomisp/pci/hive_isp_css_common/mmu_global.h   |    1 +
- .../atomisp/pci/hive_isp_css_common/sp_global.h    |   13 +-
- .../pci/hive_isp_css_common/timed_ctrl_global.h    |    1 +
- .../atomisp/pci/hive_isp_css_common/vamem_global.h |    1 +
- .../atomisp/pci/hive_isp_css_common/vmem_global.h  |    1 +
- .../staging/media/atomisp/pci/hive_isp_css_defs.h  |    1 +
- .../pci/hive_isp_css_include/assert_support.h      |    1 +
- .../pci/hive_isp_css_include/bitop_support.h       |    1 +
- .../atomisp/pci/hive_isp_css_include/csi_rx.h      |    1 +
- .../media/atomisp/pci/hive_isp_css_include/debug.h |    1 +
- .../device_access/device_access.h                  |    3 +-
- .../media/atomisp/pci/hive_isp_css_include/dma.h   |    1 +
- .../pci/hive_isp_css_include/error_support.h       |   39 -
- .../atomisp/pci/hive_isp_css_include/event_fifo.h  |    1 +
- .../pci/hive_isp_css_include/fifo_monitor.h        |    1 +
- .../atomisp/pci/hive_isp_css_include/gdc_device.h  |    1 +
- .../atomisp/pci/hive_isp_css_include/gp_device.h   |    1 +
- .../atomisp/pci/hive_isp_css_include/gp_timer.h    |    1 +
- .../media/atomisp/pci/hive_isp_css_include/gpio.h  |    1 +
- .../media/atomisp/pci/hive_isp_css_include/hmem.h  |    1 +
- .../pci/hive_isp_css_include/host/csi_rx_public.h  |    1 +
- .../pci/hive_isp_css_include/host/debug_public.h   |    8 +-
- .../pci/hive_isp_css_include/host/dma_public.h     |    3 +-
- .../hive_isp_css_include/host/event_fifo_public.h  |    3 +-
- .../host/fifo_monitor_public.h                     |    3 +-
- .../pci/hive_isp_css_include/host/gdc_public.h     |    1 +
- .../hive_isp_css_include/host/gp_device_public.h   |    3 +-
- .../hive_isp_css_include/host/gp_timer_public.h    |    3 +-
- .../pci/hive_isp_css_include/host/gpio_public.h    |    3 +-
- .../pci/hive_isp_css_include/host/hmem_public.h    |    1 +
- .../hive_isp_css_include/host/ibuf_ctrl_public.h   |    1 +
- .../host/input_formatter_public.h                  |    3 +-
- .../pci/hive_isp_css_include/host/irq_public.h     |   19 +-
- .../pci/hive_isp_css_include/host/isp_public.h     |    3 +-
- .../hive_isp_css_include/host/isys_dma_public.h    |    3 +-
- .../hive_isp_css_include/host/isys_irq_public.h    |    1 +
- .../pci/hive_isp_css_include/host/isys_public.h    |    1 +
- .../host/isys_stream2mmio_public.h                 |    1 +
- .../pci/hive_isp_css_include/host/mmu_public.h     |    3 +-
- .../hive_isp_css_include/host/pixelgen_public.h    |    1 +
- .../pci/hive_isp_css_include/host/sp_public.h      |    3 +-
- .../pci/hive_isp_css_include/host/tag_public.h     |    1 +
- .../hive_isp_css_include/host/timed_ctrl_public.h  |    3 +-
- .../pci/hive_isp_css_include/host/vamem_public.h   |    1 +
- .../pci/hive_isp_css_include/host/vmem_public.h    |    1 +
- .../atomisp/pci/hive_isp_css_include/ibuf_ctrl.h   |    1 +
- .../pci/hive_isp_css_include/input_formatter.h     |    1 +
- .../pci/hive_isp_css_include/input_system.h        |    1 +
- .../media/atomisp/pci/hive_isp_css_include/irq.h   |    1 +
- .../media/atomisp/pci/hive_isp_css_include/isp.h   |    1 +
- .../atomisp/pci/hive_isp_css_include/isys_dma.h    |    1 +
- .../atomisp/pci/hive_isp_css_include/isys_irq.h    |    1 +
- .../pci/hive_isp_css_include/isys_stream2mmio.h    |    1 +
- .../pci/hive_isp_css_include/math_support.h        |    1 +
- .../memory_access/memory_access.h                  |  174 --
- .../pci/hive_isp_css_include/memory_realloc.h      |   38 -
- .../pci/hive_isp_css_include/misc_support.h        |    1 +
- .../atomisp/pci/hive_isp_css_include/mmu_device.h  |    1 +
- .../atomisp/pci/hive_isp_css_include/pixelgen.h    |    1 +
- .../pci/hive_isp_css_include/platform_support.h    |    4 +-
- .../pci/hive_isp_css_include/print_support.h       |    1 +
- .../media/atomisp/pci/hive_isp_css_include/queue.h |    1 +
- .../atomisp/pci/hive_isp_css_include/resource.h    |    1 +
- .../media/atomisp/pci/hive_isp_css_include/sp.h    |    1 +
- .../pci/hive_isp_css_include/string_support.h      |  165 --
- .../pci/hive_isp_css_include/system_types.h        |   24 -
- .../media/atomisp/pci/hive_isp_css_include/tag.h   |    1 +
- .../atomisp/pci/hive_isp_css_include/timed_ctrl.h  |    1 +
- .../pci/hive_isp_css_include/type_support.h        |    1 +
- .../media/atomisp/pci/hive_isp_css_include/vamem.h |    1 +
- .../media/atomisp/pci/hive_isp_css_include/vmem.h  |    1 +
- .../pci/hive_isp_css_shared/host/queue_local.h     |    1 +
- .../pci/hive_isp_css_shared/host/queue_private.h   |    1 +
- .../atomisp/pci/hive_isp_css_shared/host/tag.c     |    1 +
- .../pci/hive_isp_css_shared/host/tag_local.h       |    1 +
- .../pci/hive_isp_css_shared/host/tag_private.h     |    1 +
- .../atomisp/pci/hive_isp_css_shared/queue_global.h |    1 +
- .../pci/hive_isp_css_shared/sw_event_global.h      |    1 +
- .../atomisp/pci/hive_isp_css_shared/tag_global.h   |    1 +
- .../pci/hive_isp_css_streaming_to_mipi_types_hrt.h |    1 +
- drivers/staging/media/atomisp/pci/hive_types.h     |    4 +-
- drivers/staging/media/atomisp/pci/hmm/hmm.c        |   40 +-
- drivers/staging/media/atomisp/pci/hmm/hmm_bo.c     |  152 +-
- .../media/atomisp/pci/hmm/hmm_dynamic_pool.c       |    1 +
- .../media/atomisp/pci/hmm/hmm_reserved_pool.c      |    1 +
- drivers/staging/media/atomisp/pci/hmm/hmm_vm.c     |  212 --
- .../atomisp/pci/hrt/hive_isp_css_custom_host_hrt.h |  106 -
- .../media/atomisp/pci/hrt/hive_isp_css_mm_hrt.c    |  124 --
- .../media/atomisp/pci/hrt/hive_isp_css_mm_hrt.h    |   57 -
- drivers/staging/media/atomisp/pci/ia_css.h         |    1 +
- drivers/staging/media/atomisp/pci/ia_css_3a.h      |    3 +-
- .../staging/media/atomisp/pci/ia_css_acc_types.h   |    7 +-
- drivers/staging/media/atomisp/pci/ia_css_buffer.h  |    1 +
- drivers/staging/media/atomisp/pci/ia_css_control.h |   17 +-
- .../media/atomisp/pci/ia_css_device_access.c       |    3 +-
- .../media/atomisp/pci/ia_css_device_access.h       |    3 +-
- drivers/staging/media/atomisp/pci/ia_css_dvs.h     |    5 +-
- drivers/staging/media/atomisp/pci/ia_css_env.h     |    1 +
- drivers/staging/media/atomisp/pci/ia_css_err.h     |   22 +-
- .../media/atomisp/pci/ia_css_event_public.h        |   19 +-
- .../staging/media/atomisp/pci/ia_css_firmware.h    |    7 +-
- drivers/staging/media/atomisp/pci/ia_css_frac.h    |    1 +
- .../media/atomisp/pci/ia_css_frame_format.h        |    1 +
- .../media/atomisp/pci/ia_css_frame_public.h        |   23 +-
- .../staging/media/atomisp/pci/ia_css_host_data.h   |    1 +
- .../staging/media/atomisp/pci/ia_css_input_port.h  |    1 +
- drivers/staging/media/atomisp/pci/ia_css_irq.h     |   14 +-
- .../staging/media/atomisp/pci/ia_css_isp_configs.h |    1 +
- .../staging/media/atomisp/pci/ia_css_isp_params.h  |    1 +
- .../staging/media/atomisp/pci/ia_css_isp_states.h  |    3 +-
- .../media/atomisp/pci/ia_css_memory_access.c       |   85 -
- .../staging/media/atomisp/pci/ia_css_metadata.h    |    1 +
- drivers/staging/media/atomisp/pci/ia_css_mipi.h    |    7 +-
- drivers/staging/media/atomisp/pci/ia_css_mmu.h     |    1 +
- .../staging/media/atomisp/pci/ia_css_mmu_private.h |    1 +
- drivers/staging/media/atomisp/pci/ia_css_morph.h   |    1 +
- drivers/staging/media/atomisp/pci/ia_css_pipe.h    |   22 +-
- .../staging/media/atomisp/pci/ia_css_pipe_public.h |   79 +-
- drivers/staging/media/atomisp/pci/ia_css_prbs.h    |    1 +
- .../staging/media/atomisp/pci/ia_css_properties.h  |    1 +
- drivers/staging/media/atomisp/pci/ia_css_shading.h |    1 +
- drivers/staging/media/atomisp/pci/ia_css_stream.h  |    3 +-
- .../media/atomisp/pci/ia_css_stream_format.h       |    1 +
- .../media/atomisp/pci/ia_css_stream_public.h       |   71 +-
- drivers/staging/media/atomisp/pci/ia_css_timer.h   |    5 +-
- drivers/staging/media/atomisp/pci/ia_css_tpg.h     |    1 +
- drivers/staging/media/atomisp/pci/ia_css_types.h   |    8 +-
- drivers/staging/media/atomisp/pci/ia_css_version.h |    3 +-
- .../media/atomisp/pci/ia_css_version_data.h        |    1 +
- drivers/staging/media/atomisp/pci/if_defs.h        |    1 +
- .../atomisp/pci/input_formatter_subsystem_defs.h   |    1 +
- .../media/atomisp/pci/input_selector_defs.h        |    1 +
- .../media/atomisp/pci/input_switch_2400_defs.h     |    1 +
- .../media/atomisp/pci/input_system_ctrl_defs.h     |    1 +
- .../staging/media/atomisp/pci/input_system_defs.h  |    1 +
- .../media/atomisp/pci/input_system_global.h        |    1 +
- .../staging/media/atomisp/pci/input_system_local.h |    1 +
- .../media/atomisp/pci/input_system_private.h       |    1 +
- .../media/atomisp/pci/input_system_public.h        |    1 +
- .../media/atomisp/pci/irq_controller_defs.h        |    1 +
- ...ive_isp_css_irq_types_hrt.h => irq_types_hrt.h} |    1 +
- .../pci/isp/kernels/aa/aa_2/ia_css_aa2.host.c      |    1 +
- .../pci/isp/kernels/aa/aa_2/ia_css_aa2.host.h      |    1 +
- .../pci/isp/kernels/aa/aa_2/ia_css_aa2_param.h     |    1 +
- .../pci/isp/kernels/aa/aa_2/ia_css_aa2_types.h     |    1 +
- .../pci/isp/kernels/anr/anr_1.0/ia_css_anr.host.c  |    1 +
- .../pci/isp/kernels/anr/anr_1.0/ia_css_anr.host.h  |    1 +
- .../pci/isp/kernels/anr/anr_1.0/ia_css_anr_param.h |    1 +
- .../pci/isp/kernels/anr/anr_1.0/ia_css_anr_types.h |    1 +
- .../pci/isp/kernels/anr/anr_2/ia_css_anr2.host.c   |    1 +
- .../pci/isp/kernels/anr/anr_2/ia_css_anr2.host.h   |    1 +
- .../pci/isp/kernels/anr/anr_2/ia_css_anr2_param.h  |    3 +-
- .../isp/kernels/anr/anr_2/ia_css_anr2_table.host.c |    1 +
- .../isp/kernels/anr/anr_2/ia_css_anr2_table.host.h |    1 +
- .../pci/isp/kernels/anr/anr_2/ia_css_anr2_types.h  |    1 +
- .../pci/isp/kernels/bh/bh_2/ia_css_bh.host.c       |    2 +-
- .../pci/isp/kernels/bh/bh_2/ia_css_bh.host.h       |    1 +
- .../pci/isp/kernels/bh/bh_2/ia_css_bh_param.h      |    1 +
- .../pci/isp/kernels/bh/bh_2/ia_css_bh_types.h      |    1 +
- .../pci/isp/kernels/bnlm/ia_css_bnlm.host.c        |    3 +-
- .../pci/isp/kernels/bnlm/ia_css_bnlm.host.h        |    1 +
- .../pci/isp/kernels/bnlm/ia_css_bnlm_param.h       |    1 +
- .../pci/isp/kernels/bnlm/ia_css_bnlm_types.h       |    1 +
- .../isp/kernels/bnr/bnr2_2/ia_css_bnr2_2.host.c    |    1 +
- .../isp/kernels/bnr/bnr2_2/ia_css_bnr2_2.host.h    |    1 +
- .../isp/kernels/bnr/bnr2_2/ia_css_bnr2_2_param.h   |    1 +
- .../isp/kernels/bnr/bnr2_2/ia_css_bnr2_2_types.h   |    1 +
- .../pci/isp/kernels/bnr/bnr_1.0/ia_css_bnr.host.c  |    1 +
- .../pci/isp/kernels/bnr/bnr_1.0/ia_css_bnr.host.h  |    1 +
- .../pci/isp/kernels/bnr/bnr_1.0/ia_css_bnr_param.h |    1 +
- .../pci/isp/kernels/cnr/cnr_1.0/ia_css_cnr.host.c  |    1 +
- .../pci/isp/kernels/cnr/cnr_1.0/ia_css_cnr.host.h  |    1 +
- .../pci/isp/kernels/cnr/cnr_1.0/ia_css_cnr_param.h |    1 +
- .../pci/isp/kernels/cnr/cnr_2/ia_css_cnr2.host.c   |    1 +
- .../pci/isp/kernels/cnr/cnr_2/ia_css_cnr2.host.h   |    1 +
- .../pci/isp/kernels/cnr/cnr_2/ia_css_cnr2_param.h  |    1 +
- .../pci/isp/kernels/cnr/cnr_2/ia_css_cnr2_types.h  |    1 +
- .../conversion_1.0/ia_css_conversion.host.c        |    1 +
- .../conversion_1.0/ia_css_conversion.host.h        |    1 +
- .../conversion_1.0/ia_css_conversion_param.h       |    1 +
- .../conversion_1.0/ia_css_conversion_types.h       |    1 +
- .../copy_output_1.0/ia_css_copy_output.host.c      |    1 +
- .../copy_output_1.0/ia_css_copy_output.host.h      |    1 +
- .../copy_output_1.0/ia_css_copy_output_param.h     |    1 +
- .../isp/kernels/crop/crop_1.0/ia_css_crop.host.c   |    1 +
- .../isp/kernels/crop/crop_1.0/ia_css_crop.host.h   |    1 +
- .../isp/kernels/crop/crop_1.0/ia_css_crop_param.h  |    1 +
- .../isp/kernels/crop/crop_1.0/ia_css_crop_types.h  |    1 +
- .../pci/isp/kernels/csc/csc_1.0/ia_css_csc.host.c  |    1 +
- .../pci/isp/kernels/csc/csc_1.0/ia_css_csc.host.h  |    1 +
- .../pci/isp/kernels/csc/csc_1.0/ia_css_csc_param.h |    1 +
- .../pci/isp/kernels/csc/csc_1.0/ia_css_csc_types.h |    1 +
- .../isp/kernels/ctc/ctc1_5/ia_css_ctc1_5.host.c    |    1 +
- .../isp/kernels/ctc/ctc1_5/ia_css_ctc1_5.host.h    |    1 +
- .../isp/kernels/ctc/ctc1_5/ia_css_ctc1_5_param.h   |    1 +
- .../pci/isp/kernels/ctc/ctc2/ia_css_ctc2.host.c    |    1 +
- .../pci/isp/kernels/ctc/ctc2/ia_css_ctc2.host.h    |    1 +
- .../pci/isp/kernels/ctc/ctc2/ia_css_ctc2_param.h   |    1 +
- .../pci/isp/kernels/ctc/ctc2/ia_css_ctc2_types.h   |    1 +
- .../pci/isp/kernels/ctc/ctc_1.0/ia_css_ctc.host.c  |    1 +
- .../pci/isp/kernels/ctc/ctc_1.0/ia_css_ctc.host.h  |    1 +
- .../pci/isp/kernels/ctc/ctc_1.0/ia_css_ctc_param.h |    1 +
- .../kernels/ctc/ctc_1.0/ia_css_ctc_table.host.c    |    4 +-
- .../kernels/ctc/ctc_1.0/ia_css_ctc_table.host.h    |    1 +
- .../pci/isp/kernels/ctc/ctc_1.0/ia_css_ctc_types.h |    1 +
- .../pci/isp/kernels/de/de_1.0/ia_css_de.host.c     |    1 +
- .../pci/isp/kernels/de/de_1.0/ia_css_de.host.h     |    1 +
- .../pci/isp/kernels/de/de_1.0/ia_css_de_param.h    |    1 +
- .../pci/isp/kernels/de/de_1.0/ia_css_de_types.h    |    1 +
- .../pci/isp/kernels/de/de_2/ia_css_de2.host.c      |    1 +
- .../pci/isp/kernels/de/de_2/ia_css_de2.host.h      |    1 +
- .../pci/isp/kernels/de/de_2/ia_css_de2_param.h     |    1 +
- .../pci/isp/kernels/de/de_2/ia_css_de2_types.h     |    1 +
- .../pci/isp/kernels/dp/dp_1.0/ia_css_dp.host.c     |    1 +
- .../pci/isp/kernels/dp/dp_1.0/ia_css_dp.host.h     |    1 +
- .../pci/isp/kernels/dp/dp_1.0/ia_css_dp_param.h    |    1 +
- .../pci/isp/kernels/dp/dp_1.0/ia_css_dp_types.h    |    1 +
- .../pci/isp/kernels/dpc2/ia_css_dpc2.host.c        |    1 +
- .../pci/isp/kernels/dpc2/ia_css_dpc2.host.h        |    1 +
- .../pci/isp/kernels/dpc2/ia_css_dpc2_param.h       |    1 +
- .../pci/isp/kernels/dpc2/ia_css_dpc2_types.h       |    1 +
- .../pci/isp/kernels/dvs/dvs_1.0/ia_css_dvs.host.c  |   14 +-
- .../pci/isp/kernels/dvs/dvs_1.0/ia_css_dvs.host.h  |    5 +-
- .../pci/isp/kernels/dvs/dvs_1.0/ia_css_dvs_param.h |    1 +
- .../pci/isp/kernels/dvs/dvs_1.0/ia_css_dvs_types.h |    1 +
- .../pci/isp/kernels/eed1_8/ia_css_eed1_8.host.c    |    1 +
- .../pci/isp/kernels/eed1_8/ia_css_eed1_8.host.h    |    1 +
- .../pci/isp/kernels/eed1_8/ia_css_eed1_8_param.h   |    1 +
- .../pci/isp/kernels/eed1_8/ia_css_eed1_8_types.h   |    1 +
- .../isp/kernels/fc/fc_1.0/ia_css_formats.host.c    |    1 +
- .../isp/kernels/fc/fc_1.0/ia_css_formats.host.h    |    1 +
- .../isp/kernels/fc/fc_1.0/ia_css_formats_param.h   |    1 +
- .../isp/kernels/fc/fc_1.0/ia_css_formats_types.h   |    1 +
- .../fixedbds/fixedbds_1.0/ia_css_fixedbds_param.h  |    1 +
- .../fixedbds/fixedbds_1.0/ia_css_fixedbds_types.h  |    1 +
- .../pci/isp/kernels/fpn/fpn_1.0/ia_css_fpn.host.c  |    1 +
- .../pci/isp/kernels/fpn/fpn_1.0/ia_css_fpn.host.h  |    1 +
- .../pci/isp/kernels/fpn/fpn_1.0/ia_css_fpn_param.h |    1 +
- .../pci/isp/kernels/fpn/fpn_1.0/ia_css_fpn_types.h |    1 +
- .../pci/isp/kernels/gc/gc_1.0/ia_css_gc.host.c     |    1 +
- .../pci/isp/kernels/gc/gc_1.0/ia_css_gc.host.h     |    1 +
- .../pci/isp/kernels/gc/gc_1.0/ia_css_gc_param.h    |    1 +
- .../isp/kernels/gc/gc_1.0/ia_css_gc_table.host.c   |    4 +-
- .../isp/kernels/gc/gc_1.0/ia_css_gc_table.host.h   |    1 +
- .../pci/isp/kernels/gc/gc_1.0/ia_css_gc_types.h    |    1 +
- .../pci/isp/kernels/gc/gc_2/ia_css_gc2.host.c      |    1 +
- .../pci/isp/kernels/gc/gc_2/ia_css_gc2.host.h      |    1 +
- .../pci/isp/kernels/gc/gc_2/ia_css_gc2_param.h     |    1 +
- .../isp/kernels/gc/gc_2/ia_css_gc2_table.host.c    |    4 +-
- .../isp/kernels/gc/gc_2/ia_css_gc2_table.host.h    |    1 +
- .../pci/isp/kernels/gc/gc_2/ia_css_gc2_types.h     |    1 +
- .../atomisp/pci/isp/kernels/hdr/ia_css_hdr.host.c  |    1 +
- .../atomisp/pci/isp/kernels/hdr/ia_css_hdr.host.h  |    1 +
- .../atomisp/pci/isp/kernels/hdr/ia_css_hdr_param.h |    1 +
- .../atomisp/pci/isp/kernels/hdr/ia_css_hdr_types.h |    1 +
- .../ipu2_io_ls/bayer_io_ls/ia_css_bayer_io.host.c  |    1 +
- .../ipu2_io_ls/bayer_io_ls/ia_css_bayer_io.host.h  |    1 +
- .../ipu2_io_ls/bayer_io_ls/ia_css_bayer_io_param.h |    1 +
- .../ipu2_io_ls/bayer_io_ls/ia_css_bayer_io_types.h |    1 +
- .../ipu2_io_ls/common/ia_css_common_io_param.h     |    1 +
- .../ipu2_io_ls/common/ia_css_common_io_types.h     |    1 +
- .../yuv444_io_ls/ia_css_yuv444_io.host.c           |    1 +
- .../yuv444_io_ls/ia_css_yuv444_io.host.h           |    1 +
- .../yuv444_io_ls/ia_css_yuv444_io_param.h          |    1 +
- .../yuv444_io_ls/ia_css_yuv444_io_types.h          |    1 +
- .../iterator/iterator_1.0/ia_css_iterator.host.c   |    5 +-
- .../iterator/iterator_1.0/ia_css_iterator.host.h   |    3 +-
- .../iterator/iterator_1.0/ia_css_iterator_param.h  |    1 +
- .../isp/kernels/macc/macc1_5/ia_css_macc1_5.host.c |    1 +
- .../isp/kernels/macc/macc1_5/ia_css_macc1_5.host.h |    1 +
- .../kernels/macc/macc1_5/ia_css_macc1_5_param.h    |    3 +-
- .../macc/macc1_5/ia_css_macc1_5_table.host.c       |    1 +
- .../macc/macc1_5/ia_css_macc1_5_table.host.h       |    1 +
- .../kernels/macc/macc1_5/ia_css_macc1_5_types.h    |    1 +
- .../isp/kernels/macc/macc_1.0/ia_css_macc.host.c   |    1 +
- .../isp/kernels/macc/macc_1.0/ia_css_macc.host.h   |    1 +
- .../isp/kernels/macc/macc_1.0/ia_css_macc_param.h  |    1 +
- .../kernels/macc/macc_1.0/ia_css_macc_table.host.c |    1 +
- .../kernels/macc/macc_1.0/ia_css_macc_table.host.h |    1 +
- .../isp/kernels/macc/macc_1.0/ia_css_macc_types.h  |    1 +
- .../isp/kernels/norm/norm_1.0/ia_css_norm.host.c   |    1 +
- .../isp/kernels/norm/norm_1.0/ia_css_norm.host.h   |    1 +
- .../isp/kernels/norm/norm_1.0/ia_css_norm_param.h  |    1 +
- .../pci/isp/kernels/ob/ob2/ia_css_ob2.host.c       |    1 +
- .../pci/isp/kernels/ob/ob2/ia_css_ob2.host.h       |    1 +
- .../pci/isp/kernels/ob/ob2/ia_css_ob2_param.h      |    1 +
- .../pci/isp/kernels/ob/ob2/ia_css_ob2_types.h      |    1 +
- .../pci/isp/kernels/ob/ob_1.0/ia_css_ob.host.c     |    1 +
- .../pci/isp/kernels/ob/ob_1.0/ia_css_ob.host.h     |    1 +
- .../pci/isp/kernels/ob/ob_1.0/ia_css_ob_param.h    |    1 +
- .../pci/isp/kernels/ob/ob_1.0/ia_css_ob_types.h    |    1 +
- .../kernels/output/output_1.0/ia_css_output.host.c |    1 +
- .../kernels/output/output_1.0/ia_css_output.host.h |    1 +
- .../output/output_1.0/ia_css_output_param.h        |    1 +
- .../output/output_1.0/ia_css_output_types.h        |    1 +
- .../kernels/qplane/qplane_2/ia_css_qplane.host.c   |    1 +
- .../kernels/qplane/qplane_2/ia_css_qplane.host.h   |    1 +
- .../kernels/qplane/qplane_2/ia_css_qplane_param.h  |    1 +
- .../kernels/qplane/qplane_2/ia_css_qplane_types.h  |    1 +
- .../pci/isp/kernels/raw/raw_1.0/ia_css_raw.host.c  |    1 +
- .../pci/isp/kernels/raw/raw_1.0/ia_css_raw.host.h  |    1 +
- .../pci/isp/kernels/raw/raw_1.0/ia_css_raw_param.h |    1 +
- .../pci/isp/kernels/raw/raw_1.0/ia_css_raw_types.h |    1 +
- .../raw_aa_binning_1.0/ia_css_raa.host.c           |    2 +-
- .../raw_aa_binning_1.0/ia_css_raa.host.h           |    1 +
- .../pci/isp/kernels/ref/ref_1.0/ia_css_ref.host.c  |   16 +-
- .../pci/isp/kernels/ref/ref_1.0/ia_css_ref.host.h  |    3 +-
- .../pci/isp/kernels/ref/ref_1.0/ia_css_ref_param.h |    5 +-
- .../pci/isp/kernels/ref/ref_1.0/ia_css_ref_state.h |    1 +
- .../pci/isp/kernels/ref/ref_1.0/ia_css_ref_types.h |    1 +
- .../pci/isp/kernels/s3a/s3a_1.0/ia_css_s3a.host.c  |    1 +
- .../pci/isp/kernels/s3a/s3a_1.0/ia_css_s3a.host.h  |    1 +
- .../pci/isp/kernels/s3a/s3a_1.0/ia_css_s3a_param.h |    1 +
- .../pci/isp/kernels/s3a/s3a_1.0/ia_css_s3a_types.h |    1 +
- .../pci/isp/kernels/sc/sc_1.0/ia_css_sc.host.c     |    1 +
- .../pci/isp/kernels/sc/sc_1.0/ia_css_sc.host.h     |    1 +
- .../pci/isp/kernels/sc/sc_1.0/ia_css_sc_param.h    |    1 +
- .../pci/isp/kernels/sc/sc_1.0/ia_css_sc_types.h    |    1 +
- .../kernels/sdis/common/ia_css_sdis_common.host.h  |    5 +-
- .../kernels/sdis/common/ia_css_sdis_common_types.h |   10 +-
- .../isp/kernels/sdis/sdis_1.0/ia_css_sdis.host.c   |   28 +-
- .../isp/kernels/sdis/sdis_1.0/ia_css_sdis.host.h   |    3 +-
- .../isp/kernels/sdis/sdis_1.0/ia_css_sdis_types.h  |    1 +
- .../isp/kernels/sdis/sdis_2/ia_css_sdis2.host.c    |   18 +-
- .../isp/kernels/sdis/sdis_2/ia_css_sdis2.host.h    |    3 +-
- .../isp/kernels/sdis/sdis_2/ia_css_sdis2_types.h   |    1 +
- .../pci/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.c  |    1 +
- .../pci/isp/kernels/tdf/tdf_1.0/ia_css_tdf.host.h  |    1 +
- .../pci/isp/kernels/tdf/tdf_1.0/ia_css_tdf_param.h |    1 +
- .../pci/isp/kernels/tdf/tdf_1.0/ia_css_tdf_types.h |    1 +
- .../pci/isp/kernels/tnr/tnr3/ia_css_tnr3_types.h   |    1 +
- .../pci/isp/kernels/tnr/tnr_1.0/ia_css_tnr.host.c  |    3 +-
- .../pci/isp/kernels/tnr/tnr_1.0/ia_css_tnr.host.h  |    3 +-
- .../pci/isp/kernels/tnr/tnr_1.0/ia_css_tnr_param.h |    3 +-
- .../pci/isp/kernels/tnr/tnr_1.0/ia_css_tnr_state.h |    1 +
- .../pci/isp/kernels/tnr/tnr_1.0/ia_css_tnr_types.h |    1 +
- .../pci/isp/kernels/uds/uds_1.0/ia_css_uds_param.h |    1 +
- .../pci/isp/kernels/vf/vf_1.0/ia_css_vf.host.c     |   25 +-
- .../pci/isp/kernels/vf/vf_1.0/ia_css_vf.host.h     |    5 +-
- .../pci/isp/kernels/vf/vf_1.0/ia_css_vf_param.h    |    1 +
- .../pci/isp/kernels/vf/vf_1.0/ia_css_vf_types.h    |    1 +
- .../pci/isp/kernels/wb/wb_1.0/ia_css_wb.host.c     |    1 +
- .../pci/isp/kernels/wb/wb_1.0/ia_css_wb.host.h     |    1 +
- .../pci/isp/kernels/wb/wb_1.0/ia_css_wb_param.h    |    1 +
- .../pci/isp/kernels/wb/wb_1.0/ia_css_wb_types.h    |    1 +
- .../pci/isp/kernels/xnr/xnr_1.0/ia_css_xnr.host.c  |    1 +
- .../pci/isp/kernels/xnr/xnr_1.0/ia_css_xnr.host.h  |    1 +
- .../pci/isp/kernels/xnr/xnr_1.0/ia_css_xnr_param.h |    1 +
- .../kernels/xnr/xnr_1.0/ia_css_xnr_table.host.c    |    4 +-
- .../kernels/xnr/xnr_1.0/ia_css_xnr_table.host.h    |    1 +
- .../pci/isp/kernels/xnr/xnr_1.0/ia_css_xnr_types.h |    1 +
- .../pci/isp/kernels/xnr/xnr_3.0/ia_css_xnr3.host.c |    3 +-
- .../pci/isp/kernels/xnr/xnr_3.0/ia_css_xnr3.host.h |    1 +
- .../isp/kernels/xnr/xnr_3.0/ia_css_xnr3_param.h    |    1 +
- .../isp/kernels/xnr/xnr_3.0/ia_css_xnr3_types.h    |    1 +
- .../pci/isp/kernels/ynr/ynr_1.0/ia_css_ynr.host.c  |    1 +
- .../pci/isp/kernels/ynr/ynr_1.0/ia_css_ynr.host.h  |    1 +
- .../pci/isp/kernels/ynr/ynr_1.0/ia_css_ynr_param.h |    1 +
- .../pci/isp/kernels/ynr/ynr_1.0/ia_css_ynr_types.h |    1 +
- .../pci/isp/kernels/ynr/ynr_2/ia_css_ynr2.host.c   |    1 +
- .../pci/isp/kernels/ynr/ynr_2/ia_css_ynr2.host.h   |    1 +
- .../pci/isp/kernels/ynr/ynr_2/ia_css_ynr2_param.h  |    1 +
- .../pci/isp/kernels/ynr/ynr_2/ia_css_ynr2_types.h  |    1 +
- .../pci/isp/modes/interface/input_buf.isp.h        |    1 +
- .../atomisp/pci/isp/modes/interface/isp_const.h    |    1 +
- .../atomisp/pci/isp/modes/interface/isp_types.h    |    1 +
- .../atomisp/pci/isp2400_input_system_global.h      |    1 +
- .../media/atomisp/pci/isp2400_input_system_local.h |   17 +-
- .../atomisp/pci/isp2400_input_system_private.h     |    1 +
- .../atomisp/pci/isp2400_input_system_public.h      |    1 +
- .../staging/media/atomisp/pci/isp2400_support.h    |    1 +
- .../media/atomisp/pci/isp2400_system_global.h      |   32 +-
- .../media/atomisp/pci/isp2400_system_local.h       |   16 +-
- .../atomisp/pci/isp2401_input_system_global.h      |    1 +
- .../media/atomisp/pci/isp2401_input_system_local.h |    1 +
- .../atomisp/pci/isp2401_input_system_private.h     |    1 +
- .../media/atomisp/pci/isp2401_mamoiada_params.h    |  228 --
- .../media/atomisp/pci/isp2401_system_global.h      |   32 +-
- .../media/atomisp/pci/isp2401_system_local.h       |   16 +-
- .../media/atomisp/pci/isp_acquisition_defs.h       |    1 +
- .../staging/media/atomisp/pci/isp_capture_defs.h   |    1 +
- ...isp2400_mamoiada_params.h => mamoiada_params.h} |   21 +-
- drivers/staging/media/atomisp/pci/memory_realloc.c |   81 -
- drivers/staging/media/atomisp/pci/mmu/isp_mmu.c    |    1 +
- .../staging/media/atomisp/pci/mmu/sh_mmu_mrfld.c   |    4 +-
- drivers/staging/media/atomisp/pci/mmu_defs.h       |    1 +
- .../pci/runtime/binary/interface/ia_css_binary.h   |   18 +-
- .../media/atomisp/pci/runtime/binary/src/binary.c  |  141 +-
- .../pci/runtime/bufq/interface/ia_css_bufq.h       |   33 +-
- .../pci/runtime/bufq/interface/ia_css_bufq_comm.h  |    1 +
- .../media/atomisp/pci/runtime/bufq/src/bufq.c      |   92 +-
- .../pci/runtime/debug/interface/ia_css_debug.h     |   10 +-
- .../debug/interface/ia_css_debug_internal.h        |    1 +
- .../runtime/debug/interface/ia_css_debug_pipe.h    |    1 +
- .../atomisp/pci/runtime/debug/src/ia_css_debug.c   |   80 +-
- .../pci/runtime/event/interface/ia_css_event.h     |    1 +
- .../media/atomisp/pci/runtime/event/src/event.c    |    4 +-
- .../pci/runtime/eventq/interface/ia_css_eventq.h   |    9 +-
- .../media/atomisp/pci/runtime/eventq/src/eventq.c  |    9 +-
- .../pci/runtime/frame/interface/ia_css_frame.h     |   11 +-
- .../runtime/frame/interface/ia_css_frame_comm.h    |    5 +-
- .../media/atomisp/pci/runtime/frame/src/frame.c    |  154 +-
- .../pci/runtime/ifmtr/interface/ia_css_ifmtr.h     |    3 +-
- .../media/atomisp/pci/runtime/ifmtr/src/ifmtr.c    |   29 +-
- .../runtime/inputfifo/interface/ia_css_inputfifo.h |    1 +
- .../atomisp/pci/runtime/inputfifo/src/inputfifo.c  |    3 +-
- .../runtime/isp_param/interface/ia_css_isp_param.h |    7 +-
- .../isp_param/interface/ia_css_isp_param_types.h   |    1 +
- .../atomisp/pci/runtime/isp_param/src/isp_param.c  |   32 +-
- .../pci/runtime/isys/interface/ia_css_isys.h       |   13 +-
- .../pci/runtime/isys/interface/ia_css_isys_comm.h  |    1 +
- .../atomisp/pci/runtime/isys/src/csi_rx_rmgr.c     |   13 +-
- .../atomisp/pci/runtime/isys/src/csi_rx_rmgr.h     |    1 +
- .../atomisp/pci/runtime/isys/src/ibuf_ctrl_rmgr.c  |    1 +
- .../atomisp/pci/runtime/isys/src/ibuf_ctrl_rmgr.h  |    1 +
- .../atomisp/pci/runtime/isys/src/isys_dma_rmgr.c   |    1 +
- .../atomisp/pci/runtime/isys/src/isys_dma_rmgr.h   |    1 +
- .../media/atomisp/pci/runtime/isys/src/isys_init.c |    1 +
- .../pci/runtime/isys/src/isys_stream2mmio_rmgr.c   |    1 +
- .../pci/runtime/isys/src/isys_stream2mmio_rmgr.h   |    1 +
- .../media/atomisp/pci/runtime/isys/src/rx.c        |   21 +-
- .../atomisp/pci/runtime/isys/src/virtual_isys.c    |   30 +-
- .../atomisp/pci/runtime/isys/src/virtual_isys.h    |    1 +
- .../runtime/pipeline/interface/ia_css_pipeline.h   |   32 +-
- .../pipeline/interface/ia_css_pipeline_common.h    |    1 +
- .../atomisp/pci/runtime/pipeline/src/pipeline.c    |  102 +-
- .../pci/runtime/queue/interface/ia_css_queue.h     |   31 +-
- .../runtime/queue/interface/ia_css_queue_comm.h    |    1 +
- .../media/atomisp/pci/runtime/queue/src/queue.c    |   45 +-
- .../atomisp/pci/runtime/queue/src/queue_access.c   |   28 +-
- .../atomisp/pci/runtime/queue/src/queue_access.h   |    4 +-
- .../pci/runtime/rmgr/interface/ia_css_rmgr.h       |    3 +-
- .../pci/runtime/rmgr/interface/ia_css_rmgr_vbuf.h  |    8 +-
- .../media/atomisp/pci/runtime/rmgr/src/rmgr.c      |   11 +-
- .../media/atomisp/pci/runtime/rmgr/src/rmgr_vbuf.c |   17 +-
- .../pci/runtime/spctrl/interface/ia_css_spctrl.h   |   11 +-
- .../runtime/spctrl/interface/ia_css_spctrl_comm.h  |    1 +
- .../media/atomisp/pci/runtime/spctrl/src/spctrl.c  |   42 +-
- .../tagger/interface/ia_css_tagger_common.h        |    5 +-
- .../media/atomisp/pci/runtime/timer/src/timer.c    |    7 +-
- .../atomisp/pci/scalar_processor_2400_params.h     |    1 +
- drivers/staging/media/atomisp/pci/sh_css.c         | 1854 ++++++++--------
- drivers/staging/media/atomisp/pci/sh_css_defs.h    |    6 +-
- .../staging/media/atomisp/pci/sh_css_dvs_info.h    |    1 +
- .../staging/media/atomisp/pci/sh_css_firmware.c    |  127 +-
- .../staging/media/atomisp/pci/sh_css_firmware.h    |   10 +-
- drivers/staging/media/atomisp/pci/sh_css_frac.h    |    1 +
- .../staging/media/atomisp/pci/sh_css_host_data.c   |    5 +-
- drivers/staging/media/atomisp/pci/sh_css_hrt.c     |    7 +-
- drivers/staging/media/atomisp/pci/sh_css_hrt.h     |    3 +-
- .../staging/media/atomisp/pci/sh_css_internal.h    |   99 +-
- drivers/staging/media/atomisp/pci/sh_css_legacy.h  |    7 +-
- .../staging/media/atomisp/pci/sh_css_metadata.c    |    1 +
- drivers/staging/media/atomisp/pci/sh_css_metrics.c |   10 +-
- drivers/staging/media/atomisp/pci/sh_css_metrics.h |    1 +
- drivers/staging/media/atomisp/pci/sh_css_mipi.c    |   73 +-
- drivers/staging/media/atomisp/pci/sh_css_mipi.h    |    9 +-
- drivers/staging/media/atomisp/pci/sh_css_mmu.c     |    2 +-
- drivers/staging/media/atomisp/pci/sh_css_morph.c   |    1 +
- .../staging/media/atomisp/pci/sh_css_param_dvs.c   |   46 +-
- .../staging/media/atomisp/pci/sh_css_param_dvs.h   |    1 +
- .../media/atomisp/pci/sh_css_param_shading.c       |    8 +-
- .../media/atomisp/pci/sh_css_param_shading.h       |    1 +
- drivers/staging/media/atomisp/pci/sh_css_params.c  |  752 ++++---
- drivers/staging/media/atomisp/pci/sh_css_params.h  |   17 +-
- .../media/atomisp/pci/sh_css_params_internal.h     |    1 +
- drivers/staging/media/atomisp/pci/sh_css_pipe.c    |   16 -
- .../staging/media/atomisp/pci/sh_css_properties.c  |    1 +
- drivers/staging/media/atomisp/pci/sh_css_shading.c |    1 +
- drivers/staging/media/atomisp/pci/sh_css_sp.c      |  142 +-
- drivers/staging/media/atomisp/pci/sh_css_sp.h      |    1 +
- drivers/staging/media/atomisp/pci/sh_css_stream.c  |    1 +
- .../media/atomisp/pci/sh_css_stream_format.c       |    1 +
- .../media/atomisp/pci/sh_css_stream_format.h       |    1 +
- drivers/staging/media/atomisp/pci/sh_css_struct.h  |    6 +-
- drivers/staging/media/atomisp/pci/sh_css_uds.h     |    1 +
- drivers/staging/media/atomisp/pci/sh_css_version.c |   12 +-
- drivers/staging/media/atomisp/pci/str2mem_defs.h   |    1 +
- .../media/atomisp/pci/streaming_to_mipi_defs.h     |    1 +
- drivers/staging/media/atomisp/pci/system_global.h  |    1 +
- drivers/staging/media/atomisp/pci/system_local.h   |    1 +
- .../media/atomisp/pci/timed_controller_defs.h      |    1 +
- drivers/staging/media/atomisp/pci/version.h        |    1 +
- drivers/staging/media/rkvdec/rkvdec-h264.c         |   70 +-
- drivers/staging/media/sunxi/cedrus/cedrus.c        |    7 +
- drivers/staging/media/sunxi/cedrus/cedrus_dec.c    |    2 +
- drivers/staging/media/sunxi/cedrus/cedrus_hw.c     |  106 +-
- drivers/staging/media/sunxi/cedrus/cedrus_hw.h     |    3 +
- drivers/staging/media/sunxi/cedrus/cedrus_video.c  |   36 +-
- drivers/staging/most/cdev/Kconfig                  |    2 +-
- drivers/staging/most/dim2/Kconfig                  |    2 +-
- drivers/target/iscsi/cxgbit/Kconfig                |    2 +-
- drivers/target/iscsi/iscsi_target.c                |   29 +-
- drivers/target/target_core_device.c                |   19 +-
- drivers/target/target_core_tmr.c                   |    4 +-
- drivers/target/target_core_transport.c             |   55 +-
- drivers/target/target_core_user.c                  |    4 +-
- drivers/target/target_core_xcopy.c                 |    9 +-
- drivers/tty/Kconfig                                |   20 +-
- drivers/tty/serial/8250/Kconfig                    |   12 +-
- drivers/tty/serial/Kconfig                         |   24 +-
- drivers/usb/Kconfig                                |    8 +-
- drivers/usb/class/Kconfig                          |    4 +-
- drivers/usb/gadget/function/f_tcm.c                |    6 +-
- drivers/usb/host/Kconfig                           |   90 +-
- drivers/usb/image/Kconfig                          |    2 +-
- drivers/usb/misc/Kconfig                           |    4 +-
- drivers/usb/misc/sisusbvga/Kconfig                 |    4 +-
- drivers/usb/serial/Kconfig                         |   30 +-
- drivers/usb/storage/Kconfig                        |    8 +-
- drivers/usb/usbip/Kconfig                          |   14 +-
- drivers/vhost/Kconfig                              |    8 +-
- drivers/video/console/Kconfig                      |    4 +-
- drivers/video/fbdev/Kconfig                        |  118 +-
- drivers/video/fbdev/geode/Kconfig                  |    8 +-
- drivers/virt/Kconfig                               |    2 +-
- drivers/virtio/Kconfig                             |   14 +-
- drivers/visorbus/Kconfig                           |    2 +-
- drivers/vme/Kconfig                                |    2 +-
- drivers/w1/Kconfig                                 |    4 +-
- drivers/watchdog/Kconfig                           |   80 +-
- drivers/xen/Makefile                               |    2 +-
- drivers/xen/events/events_base.c                   |   32 +-
- drivers/xen/preempt.c                              |   42 -
- drivers/zorro/Kconfig                              |    2 +-
- fs/Kconfig                                         |    4 +-
- fs/Kconfig.binfmt                                  |    8 +-
- fs/cifs/cache.c                                    |    9 +-
- fs/cifs/cifs_debug.c                               |    4 +-
- fs/cifs/cifsacl.c                                  |   79 +-
- fs/cifs/cifsacl.h                                  |   15 +
- fs/cifs/cifsfs.c                                   |    2 +-
- fs/cifs/cifsglob.h                                 |   18 +
- fs/cifs/cifsproto.h                                |    3 +
- fs/cifs/dir.c                                      |    5 +-
- fs/cifs/file.c                                     |    5 +-
- fs/cifs/fscache.c                                  |   17 +-
- fs/cifs/fscache.h                                  |    9 +
- fs/cifs/inode.c                                    |  185 +-
- fs/cifs/link.c                                     |    4 +-
- fs/cifs/smb2glob.h                                 |    1 +
- fs/cifs/smb2inode.c                                |  105 +
- fs/cifs/smb2pdu.c                                  |  131 +-
- fs/cifs/smb2pdu.h                                  |   27 +-
- fs/cifs/smb2proto.h                                |    6 +
- fs/cifs/trace.h                                    |    3 +
- fs/iomap/buffered-io.c                             |    2 +-
- fs/nls/Kconfig                                     |   32 +-
- fs/notify/fanotify/Kconfig                         |    4 +-
- fs/notify/inotify/Kconfig                          |    2 +-
- fs/pipe.c                                          |  242 +-
- fs/proc/Kconfig                                    |    2 +-
- fs/romfs/Kconfig                                   |    2 +-
- fs/splice.c                                        |   12 +-
- fs/xfs/xfs_inode.c                                 |    4 +-
- include/asm-generic/bug.h                          |    9 +-
- include/linux/bsearch.h                            |   26 +-
- include/linux/context_tracking.h                   |    6 +-
- include/linux/context_tracking_state.h             |    6 +-
- include/linux/debug_locks.h                        |    2 +-
- include/linux/edac.h                               |    8 -
- include/linux/hardirq.h                            |   41 +-
- include/linux/i2c-smbus.h                          |    8 +-
- include/linux/i2c.h                                |    8 +-
- include/linux/interrupt.h                          |    8 +-
- include/linux/irqflags.h                           |    4 +-
- include/linux/key.h                                |   33 +-
- include/linux/lsm_audit.h                          |    1 +
- include/linux/lsm_hook_defs.h                      |    9 +
- include/linux/lsm_hooks.h                          |   14 +
- include/linux/pci_ids.h                            |    1 +
- include/linux/pipe_fs_i.h                          |   27 +-
- include/linux/platform_data/i2c-pxa.h              |   48 -
- include/linux/ras.h                                |    5 -
- include/linux/sched.h                              |    4 +-
- include/linux/security.h                           |   30 +-
- include/linux/set_memory.h                         |    2 +-
- include/linux/watch_queue.h                        |  127 ++
- include/media/videobuf2-dma-contig.h               |    2 +-
- include/target/target_core_fabric.h                |    9 +-
- include/uapi/linux/keyctl.h                        |    2 +
- include/uapi/linux/watch_queue.h                   |  104 +
- include/xen/events.h                               |    7 -
- include/xen/hvm.h                                  |    2 +
- include/xen/interface/hvm/hvm_op.h                 |    2 +
- include/xen/xen-ops.h                              |   19 +-
- init/Kconfig                                       |   26 +-
- kernel/Makefile                                    |    1 +
- kernel/context_tracking.c                          |   14 +-
- kernel/gcov/Kconfig                                |    4 +-
- kernel/irq/Kconfig                                 |    4 +-
- kernel/locking/lockdep.c                           |    4 +-
- kernel/panic.c                                     |    4 +-
- kernel/power/Kconfig                               |   26 +-
- kernel/softirq.c                                   |   44 +-
- kernel/time/timekeeping.c                          |    2 +-
- kernel/trace/trace_preemptirq.c                    |   10 +-
- kernel/watch_queue.c                               |  655 ++++++
- lib/Kconfig.debug                                  |    6 +-
- lib/bsearch.c                                      |   22 +-
- lib/smp_processor_id.c                             |   10 +-
- mm/Kconfig.debug                                   |   16 +-
- net/6lowpan/Kconfig                                |   32 +-
- net/8021q/Kconfig                                  |    2 +-
- net/9p/trans_xen.c                                 |   61 +-
- net/Kconfig                                        |   26 +-
- net/atm/Kconfig                                    |    2 +-
- net/bridge/Kconfig                                 |    6 +-
- net/caif/Kconfig                                   |    8 +-
- net/can/Kconfig                                    |    8 +-
- net/dcb/Kconfig                                    |    2 +-
- net/dccp/Kconfig                                   |    4 +-
- net/dccp/ccids/Kconfig                             |    6 +-
- net/decnet/Kconfig                                 |    4 +-
- net/dsa/Kconfig                                    |    2 +-
- net/hsr/Kconfig                                    |    2 +-
- net/ieee802154/6lowpan/Kconfig                     |    2 +-
- net/ieee802154/Kconfig                             |    6 +-
- net/ipv4/Kconfig                                   |   72 +-
- net/ipv4/netfilter/Kconfig                         |   16 +-
- net/ipv6/Kconfig                                   |   44 +-
- net/ipv6/netfilter/Kconfig                         |    6 +-
- net/kcm/Kconfig                                    |    2 +-
- net/l2tp/Kconfig                                   |    2 +-
- net/l3mdev/Kconfig                                 |    2 +-
- net/lapb/Kconfig                                   |    2 +-
- net/mac80211/Kconfig                               |   52 +-
- net/mac802154/Kconfig                              |    2 +-
- net/mpls/Kconfig                                   |    6 +-
- net/ncsi/Kconfig                                   |    4 +-
- net/netfilter/Kconfig                              |   58 +-
- net/netfilter/ipvs/Kconfig                         |   54 +-
- net/netlabel/Kconfig                               |    2 +-
- net/netlink/Kconfig                                |    2 +-
- net/nfc/hci/Kconfig                                |    2 +-
- net/nsh/Kconfig                                    |    2 +-
- net/openvswitch/Kconfig                            |    8 +-
- net/packet/Kconfig                                 |    4 +-
- net/qrtr/Kconfig                                   |    6 +-
- net/rds/Kconfig                                    |    6 +-
- net/sched/Kconfig                                  |  122 +-
- net/sctp/Kconfig                                   |    2 +-
- net/smc/Kconfig                                    |    4 +-
- net/switchdev/Kconfig                              |    2 +-
- net/tipc/Kconfig                                   |    4 +-
- net/tls/Kconfig                                    |    2 +-
- net/unix/Kconfig                                   |    4 +-
- net/wireless/Kconfig                               |   12 +-
- net/x25/Kconfig                                    |    2 +-
- net/xfrm/Kconfig                                   |   14 +-
- samples/Kconfig                                    |    9 +-
- samples/Makefile                                   |    3 +-
- samples/binderfs/.gitignore                        |    1 +
- samples/binderfs/Makefile                          |    9 +-
- samples/binderfs/binderfs_example.c                |    1 -
- samples/watch_queue/.gitignore                     |    1 +
- samples/watch_queue/Makefile                       |    7 +
- samples/watch_queue/watch_test.c                   |  186 ++
- scripts/Makefile.lib                               |    6 +-
- scripts/Makefile.package                           |    6 +-
- scripts/package/buildtar                           |    4 +-
- security/keys/Kconfig                              |    9 +
- security/keys/compat.c                             |    3 +
- security/keys/gc.c                                 |    5 +
- security/keys/internal.h                           |   38 +-
- security/keys/key.c                                |   38 +-
- security/keys/keyctl.c                             |  115 +-
- security/keys/keyring.c                            |   20 +-
- security/keys/permission.c                         |   31 +-
- security/keys/process_keys.c                       |   46 +-
- security/keys/request_key.c                        |    4 +-
- security/security.c                                |   22 +-
- security/selinux/hooks.c                           |   51 +-
- security/smack/smack_lsm.c                         |  112 +-
- security/tomoyo/Kconfig                            |    6 +-
- sound/aoa/Kconfig                                  |    2 +-
- sound/aoa/codecs/Kconfig                           |    6 +-
- sound/aoa/fabrics/Kconfig                          |    2 +-
- sound/aoa/soundbus/Kconfig                         |    4 +-
- sound/soc/Kconfig                                  |    2 +-
- sound/soc/samsung/Kconfig                          |    2 +-
- sound/x86/Kconfig                                  |    2 +-
- 1419 files changed, 19735 insertions(+), 13955 deletions(-)
- delete mode 100644 Documentation/devicetree/bindings/i2c/i2c-designware.txt
- create mode 100644 Documentation/devicetree/bindings/i2c/i2c-qcom-cci.txt
- create mode 100644 Documentation/devicetree/bindings/i2c/nuvoton,npcm7xx-i2c.yaml
- create mode 100644 Documentation/devicetree/bindings/i2c/snps,designware-i2c.yaml
- create mode 100644 Documentation/watch_queue.rst
- delete mode 100644 arch/x86/include/asm/acrn.h
- delete mode 100644 arch/x86/include/asm/entry_arch.h
- create mode 100644 arch/x86/include/asm/idtentry.h
- delete mode 100644 arch/x86/include/asm/irq_regs.h
- create mode 100644 arch/x86/include/asm/irq_stack.h
- create mode 100644 arch/x86/include/asm/trapnr.h
- create mode 100644 drivers/i2c/busses/i2c-npcm7xx.c
- create mode 100644 drivers/i2c/busses/i2c-qcom-cci.c
- delete mode 100644 drivers/staging/media/atomisp/include/hmm/hmm_vm.h
- delete mode 100644 drivers/staging/media/atomisp/pci/atomisp_helper.h
- delete mode 100644 drivers/staging/media/atomisp/pci/hive_isp_css_2401_irq_types_hrt.h
- delete mode 100644 drivers/staging/media/atomisp/pci/hive_isp_css_include/error_support.h
- delete mode 100644 drivers/staging/media/atomisp/pci/hive_isp_css_include/memory_access/memory_access.h
- delete mode 100644 drivers/staging/media/atomisp/pci/hive_isp_css_include/memory_realloc.h
- delete mode 100644 drivers/staging/media/atomisp/pci/hive_isp_css_include/string_support.h
- delete mode 100644 drivers/staging/media/atomisp/pci/hive_isp_css_include/system_types.h
- delete mode 100644 drivers/staging/media/atomisp/pci/hmm/hmm_vm.c
- delete mode 100644 drivers/staging/media/atomisp/pci/hrt/hive_isp_css_custom_host_hrt.h
- delete mode 100644 drivers/staging/media/atomisp/pci/hrt/hive_isp_css_mm_hrt.c
- delete mode 100644 drivers/staging/media/atomisp/pci/hrt/hive_isp_css_mm_hrt.h
- delete mode 100644 drivers/staging/media/atomisp/pci/ia_css_memory_access.c
- rename drivers/staging/media/atomisp/pci/{css_2400_system/hrt/hive_isp_css_irq_types_hrt.h => irq_types_hrt.h} (98%)
- delete mode 100644 drivers/staging/media/atomisp/pci/isp2401_mamoiada_params.h
- rename drivers/staging/media/atomisp/pci/{css_2400_system/hrt/isp2400_mamoiada_params.h => mamoiada_params.h} (91%)
- delete mode 100644 drivers/staging/media/atomisp/pci/memory_realloc.c
- delete mode 100644 drivers/staging/media/atomisp/pci/sh_css_pipe.c
- delete mode 100644 drivers/xen/preempt.c
- create mode 100644 include/linux/watch_queue.h
- create mode 100644 include/uapi/linux/watch_queue.h
- create mode 100644 kernel/watch_queue.c
- create mode 100644 samples/binderfs/.gitignore
- create mode 100644 samples/watch_queue/.gitignore
- create mode 100644 samples/watch_queue/Makefile
- create mode 100644 samples/watch_queue/watch_test.c
+ .../networking/devlink-params-sja1105.txt          |  27 --
+ Documentation/networking/devlink/index.rst         |   1 +
+ Documentation/networking/devlink/sja1105.rst       |  49 +++
+ Documentation/networking/dsa/sja1105.rst           |   6 +-
+ Documentation/networking/ethtool-netlink.rst       |  12 +-
+ Documentation/networking/mac80211-injection.rst    |   2 +-
+ Documentation/networking/regulatory.rst            |   6 +-
+ Makefile                                           |   4 +-
+ drivers/crypto/chelsio/chcr_algo.c                 |  81 +++--
+ drivers/net/bonding/bond_main.c                    |   2 -
+ drivers/net/bonding/bond_options.c                 |   2 -
+ drivers/net/ethernet/cadence/macb_main.c           |   5 +-
+ drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.c   |   5 +-
+ drivers/net/ethernet/ibm/ibmvnic.c                 |   3 +
+ drivers/net/ethernet/intel/iavf/iavf.h             |  18 +
+ drivers/net/ethernet/intel/iavf/iavf_ethtool.c     |  37 +-
+ drivers/net/ethernet/intel/iavf/iavf_main.c        |  67 ++--
+ drivers/net/ethernet/intel/iavf/iavf_txrx.c        |  12 +-
+ drivers/net/ethernet/intel/iavf/iavf_virtchnl.c    | 106 +++++-
+ drivers/net/ethernet/marvell/mvneta.c              |  13 +
+ drivers/net/ethernet/mellanox/mlx5/core/devlink.c  |   2 -
+ drivers/net/ethernet/mellanox/mlx5/core/en/tc_ct.c |  16 +-
+ .../net/ethernet/mellanox/mlx5/core/en/xsk/setup.c |   4 +
+ .../net/ethernet/mellanox/mlx5/core/en_ethtool.c   |  41 +--
+ .../mellanox/mlx5/core/esw/acl/ingress_lgcy.c      |   6 +-
+ drivers/net/ethernet/mellanox/mlx5/core/health.c   |  14 +-
+ drivers/net/ethernet/mellanox/mlx5/core/main.c     |  40 +--
+ .../ethernet/mellanox/mlx5/core/steering/dr_send.c |   2 +-
+ drivers/net/ethernet/pensando/ionic/ionic.h        |   2 -
+ .../net/ethernet/pensando/ionic/ionic_bus_pci.c    |   7 +-
+ .../net/ethernet/pensando/ionic/ionic_devlink.c    |   4 -
+ drivers/net/ethernet/pensando/ionic/ionic_lif.c    |  17 +-
+ drivers/net/ethernet/ti/am65-cpsw-nuss.c           |   2 +-
+ drivers/net/ethernet/ti/cpsw_ale.c                 |  49 ++-
+ drivers/net/hamradio/bpqether.c                    |   2 +
+ drivers/net/ipa/ipa_data-sc7180.c                  |   2 +-
+ drivers/net/ipa/ipa_endpoint.c                     |  95 +++---
+ drivers/net/ipa/ipa_reg.h                          |   2 +
+ drivers/net/macsec.c                               |   5 +
+ drivers/net/macvlan.c                              |  13 +-
+ drivers/net/vxlan.c                                |  14 +-
+ drivers/net/wireless/intersil/hostap/hostap_hw.c   |   3 +
+ fs/btrfs/Kconfig                                   |   1 -
+ fs/btrfs/btrfs_inode.h                             |  18 +
+ fs/btrfs/ctree.h                                   |   4 -
+ fs/btrfs/file.c                                    |  97 +-----
+ fs/btrfs/inode.c                                   | 379 +++++++++++++--------
+ fs/direct-io.c                                     |  19 ++
+ include/linux/fs.h                                 |   2 +
+ include/linux/lsm_hook_defs.h                      |   2 +
+ include/linux/lsm_hooks.h                          |   9 +
+ include/linux/netdevice.h                          |  12 +-
+ include/linux/security.h                           |   9 +
+ include/net/cfg80211.h                             |   5 +-
+ include/net/flow_offload.h                         |  24 --
+ include/net/inet_hashtables.h                      |   6 +
+ include/net/nexthop.h                              |  28 +-
+ include/uapi/linux/bpf.h                           |  13 +
+ include/uapi/linux/nl80211.h                       |   2 +-
+ kernel/bpf/cgroup.c                                |   2 +-
+ kernel/bpf/devmap.c                                |  18 +-
+ kernel/bpf/syscall.c                               |  17 +-
+ kernel/bpf/verifier.c                              |   2 +-
+ kernel/sys.c                                       |  15 +-
+ kernel/trace/trace_kprobe.c                        |   2 +-
+ kernel/trace/trace_uprobe.c                        |   2 +-
+ net/8021q/vlan_dev.c                               |   8 +-
+ net/atm/lec.c                                      |   4 +-
+ net/batman-adv/soft-interface.c                    |   2 +
+ net/bridge/br_device.c                             |   8 +
+ net/core/dev.c                                     |  30 +-
+ net/core/dev_addr_lists.c                          |  12 +-
+ net/core/filter.c                                  |  19 +-
+ net/core/rtnetlink.c                               |   1 -
+ net/core/sock_map.c                                |  38 ++-
+ net/dccp/proto.c                                   |   7 +-
+ net/dsa/master.c                                   |   4 +
+ net/ipv4/nexthop.c                                 |  82 +++--
+ net/ipv4/tcp.c                                     |  70 +++-
+ net/ipv4/tcp_bpf.c                                 |   6 +
+ net/mac80211/mlme.c                                |   2 +
+ net/mac80211/rx.c                                  |   2 +-
+ net/mptcp/options.c                                |   2 +
+ net/mptcp/protocol.c                               |  45 +--
+ net/mptcp/subflow.c                                |   1 +
+ net/netlink/genetlink.c                            |  28 +-
+ net/netrom/af_netrom.c                             |   2 +
+ net/rose/af_rose.c                                 |   2 +
+ net/rxrpc/ar-internal.h                            | 119 ++-----
+ net/rxrpc/call_event.c                             |  30 +-
+ net/rxrpc/conn_event.c                             |   7 +-
+ net/rxrpc/input.c                                  |   7 +-
+ net/rxrpc/peer_event.c                             |   4 +-
+ net/rxrpc/recvmsg.c                                |  79 +++++
+ net/rxrpc/sendmsg.c                                |   4 +-
+ net/sched/sch_generic.c                            |   1 +
+ net/tipc/bearer.c                                  |   2 +-
+ net/tipc/msg.c                                     |   4 +-
+ net/tipc/socket.c                                  |   3 +-
+ net/wireless/Kconfig                               |   2 +-
+ net/wireless/core.c                                |   6 +-
+ net/wireless/core.h                                |   2 +
+ net/wireless/mlme.c                                |  26 +-
+ net/xdp/xsk.c                                      |   4 +-
+ scripts/link-vmlinux.sh                            |   4 +-
+ security/security.c                                |   6 +
+ tools/bpf/Makefile                                 |   1 -
+ tools/bpf/bpftool/gen.c                            |  11 +-
+ tools/include/uapi/linux/bpf.h                     |  13 +
+ tools/lib/bpf/btf_dump.c                           |  33 +-
+ tools/lib/bpf/hashmap.h                            |   7 +-
+ tools/lib/bpf/libbpf.c                             |   4 -
+ .../selftests/bpf/prog_tests/cgroup_attach_multi.c |   7 +
+ .../selftests/bpf/prog_tests/load_bytes_relative.c |  71 ++++
+ tools/testing/selftests/bpf/prog_tests/ringbuf.c   |  42 ++-
+ tools/testing/selftests/bpf/prog_tests/skeleton.c  |  45 ++-
+ .../selftests/bpf/prog_tests/xdp_devmap_attach.c   |   8 -
+ .../selftests/bpf/progs/load_bytes_relative.c      |  48 +++
+ tools/testing/selftests/bpf/progs/test_skeleton.c  |  19 +-
+ .../selftests/bpf/progs/test_xdp_devmap_helpers.c  |   2 +-
+ .../bpf/progs/test_xdp_with_devmap_helpers.c       |   3 +-
+ tools/testing/selftests/net/rxtimestamp.c          |   1 +
+ tools/testing/selftests/net/timestamping.c         |  10 +-
+ tools/testing/selftests/net/tls.c                  |  58 ++++
+ 124 files changed, 1672 insertions(+), 884 deletions(-)
+ delete mode 100644 Documentation/networking/devlink-params-sja1105.txt
+ create mode 100644 Documentation/networking/devlink/sja1105.rst
+ create mode 100644 tools/testing/selftests/bpf/prog_tests/load_bytes_relative.c
+ create mode 100644 tools/testing/selftests/bpf/progs/load_bytes_relative.c
 Merging fixes/master (df8cb0ea9423 device_cgroup: Fix RCU list debugging warning)
 $ git merge fixes/master
 Merge made by the 'recursive' strategy.
  security/device_cgroup.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
-Merging kbuild-current/fixes (e4a42c82e943 kbuild: fix broken builds because of GZIP,BZIP2,LZOP variables)
+Merging kbuild-current/fixes (96144c58abe7 Merge git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net)
 $ git merge kbuild-current/fixes
 Already up to date.
 Merging arc-current/for-curr (9d9368e839c2 ARC: [arcompact] fix bitrot with 2 levels of interrupt)
@@ -1508,136 +178,9 @@ Already up to date.
 Merging fscrypt-current/for-stable (2b4eae95c736 fscrypt: don't evict dirty inodes after removing key)
 $ git merge fscrypt-current/for-stable
 Already up to date.
-Merging net/master (bc139119a170 net: ethernet: ti: ale: fix allmulti for nu type ale)
+Merging net/master (96144c58abe7 Merge git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net)
 $ git merge net/master
-Auto-merging net/wireless/Kconfig
-Auto-merging net/ipv4/tcp.c
-CONFLICT (content): Merge conflict in net/ipv4/tcp.c
-Auto-merging kernel/trace/trace_kprobe.c
-Auto-merging kernel/bpf/syscall.c
-Auto-merging include/linux/netdevice.h
-Removing Documentation/networking/devlink-params-sja1105.txt
-Resolved 'net/ipv4/tcp.c' using previous resolution.
-Automatic merge failed; fix conflicts and then commit the result.
-$ git commit --no-edit -v -a
-[master bc8c70c8f2d6] Merge remote-tracking branch 'net/master'
-$ git diff -M --stat --summary HEAD^..
- .../networking/devlink-params-sja1105.txt          |  27 -----
- Documentation/networking/devlink/index.rst         |   1 +
- Documentation/networking/devlink/sja1105.rst       |  49 +++++++++
- Documentation/networking/dsa/sja1105.rst           |   6 +-
- Documentation/networking/ethtool-netlink.rst       |  12 +--
- Documentation/networking/mac80211-injection.rst    |   2 +-
- Documentation/networking/regulatory.rst            |   6 +-
- drivers/crypto/chelsio/chcr_algo.c                 |  81 ++++++++++----
- drivers/net/bonding/bond_main.c                    |   2 -
- drivers/net/bonding/bond_options.c                 |   2 -
- drivers/net/ethernet/cadence/macb_main.c           |   5 +-
- drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.c   |   5 +-
- drivers/net/ethernet/ibm/ibmvnic.c                 |   3 +
- drivers/net/ethernet/intel/iavf/iavf.h             |  18 ++++
- drivers/net/ethernet/intel/iavf/iavf_ethtool.c     |  37 ++++---
- drivers/net/ethernet/intel/iavf/iavf_main.c        |  67 +++++++-----
- drivers/net/ethernet/intel/iavf/iavf_txrx.c        |  12 +--
- drivers/net/ethernet/intel/iavf/iavf_virtchnl.c    | 106 ++++++++++++++----
- drivers/net/ethernet/marvell/mvneta.c              |  13 +++
- drivers/net/ethernet/mellanox/mlx5/core/devlink.c  |   2 -
- drivers/net/ethernet/mellanox/mlx5/core/en/tc_ct.c |  16 +--
- .../net/ethernet/mellanox/mlx5/core/en/xsk/setup.c |   4 +
- .../net/ethernet/mellanox/mlx5/core/en_ethtool.c   |  41 +++----
- .../mellanox/mlx5/core/esw/acl/ingress_lgcy.c      |   6 +-
- drivers/net/ethernet/mellanox/mlx5/core/health.c   |  14 ++-
- drivers/net/ethernet/mellanox/mlx5/core/main.c     |  40 +++----
- .../ethernet/mellanox/mlx5/core/steering/dr_send.c |   2 +-
- drivers/net/ethernet/pensando/ionic/ionic.h        |   2 -
- .../net/ethernet/pensando/ionic/ionic_bus_pci.c    |   7 +-
- .../net/ethernet/pensando/ionic/ionic_devlink.c    |   4 -
- drivers/net/ethernet/pensando/ionic/ionic_lif.c    |  17 +--
- drivers/net/ethernet/ti/am65-cpsw-nuss.c           |   2 +-
- drivers/net/ethernet/ti/cpsw_ale.c                 |  49 +++++++--
- drivers/net/hamradio/bpqether.c                    |   2 +
- drivers/net/ipa/ipa_data-sc7180.c                  |   2 +-
- drivers/net/ipa/ipa_endpoint.c                     |  95 +++++++++-------
- drivers/net/ipa/ipa_reg.h                          |   2 +
- drivers/net/macsec.c                               |   5 +
- drivers/net/macvlan.c                              |  13 ++-
- drivers/net/vxlan.c                                |  14 +--
- drivers/net/wireless/intersil/hostap/hostap_hw.c   |   3 +
- include/linux/netdevice.h                          |  12 ++-
- include/net/cfg80211.h                             |   5 +-
- include/net/flow_offload.h                         |  24 -----
- include/net/inet_hashtables.h                      |   6 ++
- include/net/nexthop.h                              |  28 ++++-
- include/uapi/linux/bpf.h                           |  13 +++
- include/uapi/linux/nl80211.h                       |   2 +-
- kernel/bpf/cgroup.c                                |   2 +-
- kernel/bpf/devmap.c                                |  18 +---
- kernel/bpf/syscall.c                               |  17 ++-
- kernel/bpf/verifier.c                              |   2 +-
- kernel/trace/trace_kprobe.c                        |   2 +-
- kernel/trace/trace_uprobe.c                        |   2 +-
- net/8021q/vlan_dev.c                               |   8 +-
- net/atm/lec.c                                      |   4 +-
- net/batman-adv/soft-interface.c                    |   2 +
- net/bridge/br_device.c                             |   8 ++
- net/core/dev.c                                     |  30 +++---
- net/core/dev_addr_lists.c                          |  12 +--
- net/core/filter.c                                  |  19 ++--
- net/core/rtnetlink.c                               |   1 -
- net/core/sock_map.c                                |  38 +++++--
- net/dccp/proto.c                                   |   7 +-
- net/dsa/master.c                                   |   4 +
- net/ipv4/nexthop.c                                 |  82 ++++++++------
- net/ipv4/tcp.c                                     |  70 ++++++++++--
- net/ipv4/tcp_bpf.c                                 |   6 ++
- net/mac80211/mlme.c                                |   2 +
- net/mac80211/rx.c                                  |   2 +-
- net/mptcp/options.c                                |   2 +
- net/mptcp/protocol.c                               |  45 ++++----
- net/mptcp/subflow.c                                |   1 +
- net/netlink/genetlink.c                            |  28 +++--
- net/netrom/af_netrom.c                             |   2 +
- net/rose/af_rose.c                                 |   2 +
- net/rxrpc/ar-internal.h                            | 119 +++++----------------
- net/rxrpc/call_event.c                             |  30 ++----
- net/rxrpc/conn_event.c                             |   7 +-
- net/rxrpc/input.c                                  |   7 +-
- net/rxrpc/peer_event.c                             |   4 +-
- net/rxrpc/recvmsg.c                                |  79 ++++++++++++++
- net/rxrpc/sendmsg.c                                |   4 +-
- net/sched/sch_generic.c                            |   1 +
- net/tipc/bearer.c                                  |   2 +-
- net/tipc/msg.c                                     |   4 +-
- net/tipc/socket.c                                  |   3 +-
- net/wireless/Kconfig                               |   2 +-
- net/wireless/core.c                                |   6 +-
- net/wireless/core.h                                |   2 +
- net/wireless/mlme.c                                |  26 ++++-
- net/xdp/xsk.c                                      |   4 +-
- scripts/link-vmlinux.sh                            |   4 +-
- tools/bpf/Makefile                                 |   1 -
- tools/bpf/bpftool/gen.c                            |  11 +-
- tools/include/uapi/linux/bpf.h                     |  13 +++
- tools/lib/bpf/btf_dump.c                           |  33 ++++--
- tools/lib/bpf/hashmap.h                            |   7 +-
- tools/lib/bpf/libbpf.c                             |   4 -
- .../selftests/bpf/prog_tests/cgroup_attach_multi.c |   7 ++
- .../selftests/bpf/prog_tests/load_bytes_relative.c |  71 ++++++++++++
- tools/testing/selftests/bpf/prog_tests/ringbuf.c   |  42 ++++++--
- tools/testing/selftests/bpf/prog_tests/skeleton.c  |  45 +++++++-
- .../selftests/bpf/prog_tests/xdp_devmap_attach.c   |   8 --
- .../selftests/bpf/progs/load_bytes_relative.c      |  48 +++++++++
- tools/testing/selftests/bpf/progs/test_skeleton.c  |  19 +++-
- .../selftests/bpf/progs/test_xdp_devmap_helpers.c  |   2 +-
- .../bpf/progs/test_xdp_with_devmap_helpers.c       |   3 +-
- tools/testing/selftests/net/rxtimestamp.c          |   1 +
- tools/testing/selftests/net/timestamping.c         |  10 +-
- tools/testing/selftests/net/tls.c                  |  58 ++++++++++
- 111 files changed, 1344 insertions(+), 647 deletions(-)
- delete mode 100644 Documentation/networking/devlink-params-sja1105.txt
- create mode 100644 Documentation/networking/devlink/sja1105.rst
- create mode 100644 tools/testing/selftests/bpf/prog_tests/load_bytes_relative.c
- create mode 100644 tools/testing/selftests/bpf/progs/load_bytes_relative.c
+Already up to date.
 Merging bpf/master (29fcb05bbf1a bpf: Undo internal BPF_PROBE_MEM in BPF insns dump)
 $ git merge bpf/master
 Already up to date.
@@ -1648,12 +191,14 @@ Merge made by the 'recursive' strategy.
  net/xfrm/xfrm_device.c | 4 +++-
  net/xfrm/xfrm_output.c | 4 ----
  3 files changed, 4 insertions(+), 5 deletions(-)
-Merging netfilter/master (c3829285b2e6 netfilter: nft_set_pipapo: Disable preemption before getting per-CPU pointer)
+Merging netfilter/master (3003055f5066 netfilter: nf_tables: hook list memleak in flowtable deletion)
 $ git merge netfilter/master
 Merge made by the 'recursive' strategy.
- net/netfilter/nft_set_pipapo.c |  6 +++++-
- net/netfilter/nft_set_rbtree.c | 21 ++++++++++++++-------
- 2 files changed, 19 insertions(+), 8 deletions(-)
+ net/netfilter/nf_conntrack_netlink.c | 32 ++++++++++++++++++++++----------
+ net/netfilter/nf_tables_api.c        | 31 ++++++++++++++++++++++++-------
+ net/netfilter/nft_set_pipapo.c       |  6 +++++-
+ net/netfilter/nft_set_rbtree.c       | 21 ++++++++++++++-------
+ 4 files changed, 65 insertions(+), 25 deletions(-)
 Merging ipvs/master (bdc48fa11e46 checkpatch/coding-style: deprecate 80-column warning)
 $ git merge ipvs/master
 Already up to date.
@@ -1751,7 +296,7 @@ CONFLICT (content): Merge conflict in drivers/crypto/ccp/sev-dev.c
 Resolved 'drivers/crypto/ccp/sev-dev.c' using previous resolution.
 Automatic merge failed; fix conflicts and then commit the result.
 $ git commit --no-edit -v -a
-[master 6eba9b66b0e2] Merge remote-tracking branch 'crypto-current/master'
+[master 4061b67b0472] Merge remote-tracking branch 'crypto-current/master'
 $ git diff -M --stat --summary HEAD^..
  crypto/algboss.c                                 |  2 --
  crypto/algif_skcipher.c                          |  6 +-----
@@ -1826,7 +371,7 @@ Already up to date.
 Merging kvms390-fixes/master (5615e74f48dc KVM: s390: Remove false WARN_ON_ONCE for the PQAP instruction)
 $ git merge kvms390-fixes/master
 Already up to date.
-Merging hwmon-fixes/hwmon (0f4ad4030eaf hwmon: (bt1-pvt) Mark is_visible functions static)
+Merging hwmon-fixes/hwmon (09aa62c08b99 hwmon: (bt1-pvt) Mark is_visible functions static)
 $ git merge hwmon-fixes/hwmon
 Merge made by the 'recursive' strategy.
  drivers/hwmon/bt1-pvt.c | 12 ++++++------
@@ -1876,7 +421,7 @@ CONFLICT (content): Merge conflict in drivers/gpu/drm/i915/gt/intel_lrc.c
 Resolved 'drivers/gpu/drm/i915/gt/intel_lrc.c' using previous resolution.
 Automatic merge failed; fix conflicts and then commit the result.
 $ git commit --no-edit -v -a
-[master aa68621c6e5b] Merge remote-tracking branch 'drm-intel-fixes/for-linux-next-fixes'
+[master 48bc0f4409bb] Merge remote-tracking branch 'drm-intel-fixes/for-linux-next-fixes'
 $ git diff -M --stat --summary HEAD^..
  drivers/gpu/drm/i915/gt/intel_lrc.c            | 30 +++++++--
  drivers/gpu/drm/i915/gt/selftest_workarounds.c |  2 +
@@ -2231,9 +776,17 @@ Already up to date.
 Merging openrisc/for-next (6bd140e14d9a openrisc: Fix issue with argument clobbering for clone/fork)
 $ git merge openrisc/for-next
 Already up to date.
-Merging parisc-hd/for-next (3d77e6a8804a Linux 5.7)
+Merging parisc-hd/for-next (fb775a8805ed parisc: Whitespace cleanups in atomic.h)
 $ git merge parisc-hd/for-next
-Already up to date.
+Auto-merging arch/parisc/mm/init.c
+Merge made by the 'recursive' strategy.
+ arch/parisc/include/asm/atomic.h  | 76 +++++++++++++++++++++------------------
+ arch/parisc/include/asm/bitops.h  | 41 +++++++--------------
+ arch/parisc/include/asm/cmpxchg.h |  6 ++--
+ arch/parisc/include/asm/futex.h   | 26 +++++++-------
+ arch/parisc/lib/bitops.c          |  6 ++--
+ arch/parisc/mm/init.c             | 12 +++----
+ 6 files changed, 81 insertions(+), 86 deletions(-)
 Merging powerpc/next (5b14671be58d Merge tag 'fuse-update-5.8' of git://git.kernel.org/pub/scm/linux/kernel/git/mszeredi/fuse)
 $ git merge powerpc/next
 Already up to date.
@@ -2415,9 +968,13 @@ Merging dmi/master (d9d8efd3241b firmware/dmi: Report DMI Bios & EC firmware rel
 $ git merge dmi/master
 Auto-merging include/linux/mod_devicetable.h
 Merge made by the 'recursive' strategy.
-Merging hwmon-staging/hwmon-next (82bd3acaeaa4 hwmon: (bt1-pvt) Mark is_visible functions static)
+Merging hwmon-staging/hwmon-next (aa3d090cb927 hwmon: (nct6683) Replace container_of() with  kobj_to_dev())
 $ git merge hwmon-staging/hwmon-next
 Merge made by the 'recursive' strategy.
+ drivers/hwmon/i5k_amb.c       |  2 +-
+ drivers/hwmon/nct6683.c       |  8 ++++----
+ drivers/hwmon/pmbus/adm1275.c | 13 ++++++-------
+ 3 files changed, 11 insertions(+), 12 deletions(-)
 Merging jc_docs/docs-next (146f5cdeda15 docs/memory-barriers.txt/kokr: smp_mb__{before,after}_atomic(): update Documentation)
 $ git merge jc_docs/docs-next
 Already up to date.
@@ -2469,7 +1026,7 @@ Merge made by the 'recursive' strategy.
 Merging rdma/for-next (fba97dc7fc76 RDMA/cm: Spurious WARNING triggered in cm_destroy_id())
 $ git merge rdma/for-next
 Already up to date.
-Merging net-next/master (af7b4801030c Merge git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net)
+Merging net-next/master (96144c58abe7 Merge git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net)
 $ git merge net-next/master
 Already up to date.
 Merging bpf-next/master (af7b4801030c Merge git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net)
@@ -2938,8 +1495,8 @@ Unstaged changes after reset:
 M	drivers/gpu/drm/amd/amdkfd/kfd_process.c
 $ git add -A .
 $ git commit -v -a --amend
-[master 2f59ffe147d0] Merge remote-tracking branch 'amdgpu/drm-next'
- Date: Sun Jun 14 09:41:37 2020 +1000
+[master 169f1888ee23] Merge remote-tracking branch 'amdgpu/drm-next'
+ Date: Mon Jun 15 09:09:52 2020 +1000
 Merging drm-intel/for-linux-next (3680c2e9f425 drm/i915/display: Only query DP state of a DDI encoder)
 $ git merge drm-intel/for-linux-next
 Already up to date.
@@ -3070,13 +1627,19 @@ Already up to date.
 Merging spi/for-next (a86cc4cfcd0b Merge remote-tracking branch 'spi/for-5.8' into spi-linus)
 $ git merge spi/for-next
 Already up to date.
-Merging tip/auto-latest (4d7f62520f72 Merge branch 'x86/entry' into auto-latest)
+Merging tip/auto-latest (b8b7f4dc1045 Merge branch 'WIP.core/headers')
 $ git merge tip/auto-latest
 Merge made by the 'recursive' strategy.
- arch/x86/events/Makefile | 2 +-
- include/linux/sched.h    | 6 ++++--
- kernel/rcu/rcuperf.c     | 2 +-
- 3 files changed, 6 insertions(+), 4 deletions(-)
+ arch/x86/events/Makefile         |  2 +-
+ arch/x86/include/asm/bug.h       |  1 +
+ include/asm-generic/bug.h        |  1 +
+ include/linux/compiler.h         | 53 -------------------------------------
+ include/linux/context_tracking.h |  2 ++
+ include/linux/instrumentation.h  | 57 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/sched.h            |  6 +++--
+ kernel/rcu/rcuperf.c             |  2 +-
+ 8 files changed, 67 insertions(+), 57 deletions(-)
+ create mode 100644 include/linux/instrumentation.h
 Merging clockevents/timers/drivers/next (809eb4e9bf9d dt-bindings: timer: Add renesas,em-sti bindings)
 $ git merge clockevents/timers/drivers/next
 Already up to date.
@@ -3091,7 +1654,7 @@ CONFLICT (content): Merge conflict in drivers/irqchip/Kconfig
 Resolved 'drivers/irqchip/Kconfig' using previous resolution.
 Automatic merge failed; fix conflicts and then commit the result.
 $ git commit --no-edit -v -a
-[master 6f9c3210d995] Merge remote-tracking branch 'irqchip/irq/irqchip-next'
+[master fc87755b6451] Merge remote-tracking branch 'irqchip/irq/irqchip-next'
 $ git diff -M --stat --summary HEAD^..
  drivers/irqchip/Kconfig          | 4 ++--
  drivers/irqchip/irq-gic-v3-its.c | 8 ++++----
@@ -3307,7 +1870,7 @@ CONFLICT (content): Merge conflict in drivers/fsi/Kconfig
 Resolved 'drivers/fsi/Kconfig' using previous resolution.
 Automatic merge failed; fix conflicts and then commit the result.
 $ git commit --no-edit -v -a
-[master aef30b13fec3] Merge remote-tracking branch 'fsi/next'
+[master 1181a1eba125] Merge remote-tracking branch 'fsi/next'
 $ git diff -M --stat --summary HEAD^..
 Merging slimbus/for-next (f9a478d658a2 slimbus: core: Fix mismatch in of_node_get/put)
 $ git merge slimbus/for-next
@@ -3400,7 +1963,7 @@ Auto-merging drivers/bus/mhi/core/init.c
 Resolved 'drivers/bus/mhi/core/pm.c' using previous resolution.
 Automatic merge failed; fix conflicts and then commit the result.
 $ git commit --no-edit -v -a
-[master 72e7fef0565f] Merge remote-tracking branch 'mhi/mhi-next'
+[master b565d7bb5d44] Merge remote-tracking branch 'mhi/mhi-next'
 $ git diff -M --stat --summary HEAD^..
 Merging notifications/notifications-pipe-core (87a10a4bdb88 watch_queue: sample: Display superblock notifications)
 $ git merge notifications/notifications-pipe-core
@@ -3477,7 +2040,7 @@ Resolved 'fs/mount.h' using previous resolution.
 Resolved 'include/uapi/asm-generic/unistd.h' using previous resolution.
 Automatic merge failed; fix conflicts and then commit the result.
 $ git commit --no-edit -v -a
-[master c8658c91c0a9] Merge remote-tracking branch 'notifications/notifications-pipe-core'
+[master d83772aa5238] Merge remote-tracking branch 'notifications/notifications-pipe-core'
 $ git diff -M --stat --summary HEAD^..
  Documentation/watch_queue.rst               |  24 ++-
  arch/alpha/kernel/syscalls/syscall.tbl      |   2 +
@@ -3586,7 +2149,7 @@ Resolved 'arch/xtensa/kernel/syscalls/syscall.tbl' using previous resolution.
 Resolved 'samples/vfs/Makefile' using previous resolution.
 Automatic merge failed; fix conflicts and then commit the result.
 $ git commit --no-edit -v -a
-[master bc1ce9370dcc] Merge remote-tracking branch 'fsinfo/fsinfo-core'
+[master 888f9022d3d9] Merge remote-tracking branch 'fsinfo/fsinfo-core'
 $ git diff -M --stat --summary HEAD^..
  Documentation/filesystems/fsinfo.rst        | 574 +++++++++++++++++++
  arch/alpha/kernel/syscalls/syscall.tbl      |   1 +
@@ -3647,8 +2210,8 @@ M	arch/arm64/include/asm/unistd32.h
 M	include/uapi/asm-generic/unistd.h
 $ git add -A .
 $ git commit -v -a --amend
-[master 3bf8aabbd760] Merge remote-tracking branch 'fsinfo/fsinfo-core'
- Date: Sun Jun 14 11:14:53 2020 +1000
+[master a3227634cc34] Merge remote-tracking branch 'fsinfo/fsinfo-core'
+ Date: Mon Jun 15 10:16:43 2020 +1000
 Merging akpm-current/current (8021e3499c32 ipc-convert-ipcs_idr-to-xarray-update-fix)
 $ git merge --no-ff akpm-current/current
 Auto-merging scripts/checkpatch.pl
@@ -3700,9 +2263,9 @@ Rebasing (1/38)Rebasing (2/38)Rebasing (3/38)Rebasing (4/38)Rebasing (5/38)
 $ cd ../next
 $ git fetch -f ../rebase-tmp akpm:akpm/master
 From ../rebase-tmp
- + f30079cd4b1a...5842f1786c29 akpm       -> akpm/master  (forced update)
+ + 5842f1786c29...0c9543639e0c akpm       -> akpm/master  (forced update)
 $ rm -rf ../rebase-tmp
-Merging akpm/master (5842f1786c29 sh: add missing EXPORT_SYMBOL() for __delay)
+Merging akpm/master (0c9543639e0c sh: add missing EXPORT_SYMBOL() for __delay)
 $ git merge --no-ff akpm/master
 Merge made by the 'recursive' strategy.
  arch/alpha/kernel/syscalls/syscall.tbl      |   1 +

@@ -34,13 +34,13 @@ extern arch_spinlock_t __atomic_hash[ATOMIC_HASH_SIZE] __lock_aligned;
 /* Can't use raw_spin_lock_irq because of #include problems, so
  * this is the substitute */
 #define _atomic_spin_lock_irqsave(l,f) do {	\
-	arch_spinlock_t *s = ATOMIC_HASH(l);		\
+	arch_spinlock_t *s = ATOMIC_HASH(l);	\
 	local_irq_save(f);			\
 	arch_spin_lock(s);			\
 } while(0)
 
 #define _atomic_spin_unlock_irqrestore(l,f) do {	\
-	arch_spinlock_t *s = ATOMIC_HASH(l);			\
+	arch_spinlock_t *s = ATOMIC_HASH(l);		\
 	arch_spin_unlock(s);				\
 	local_irq_restore(f);				\
 } while(0)
@@ -59,11 +59,11 @@ extern arch_spinlock_t __atomic_hash[ATOMIC_HASH_SIZE] __lock_aligned;
 static __inline__ void atomic_set(atomic_t *v, int i)
 {
 	unsigned long flags;
-	_atomic_spin_lock_irqsave(v, flags);
+	volatile int *p = &v->counter;
 
-	v->counter = i;
-
-	_atomic_spin_unlock_irqrestore(v, flags);
+	_atomic_spin_lock_irqsave(p, flags);
+	*p = i;
+	_atomic_spin_unlock_irqrestore(p, flags);
 }
 
 #define atomic_set_release(v, i)	atomic_set((v), (i))
@@ -81,21 +81,23 @@ static __inline__ int atomic_read(const atomic_t *v)
 static __inline__ void atomic_##op(int i, atomic_t *v)			\
 {									\
 	unsigned long flags;						\
+	volatile int *p = &v->counter;					\
 									\
-	_atomic_spin_lock_irqsave(v, flags);				\
-	v->counter c_op i;						\
-	_atomic_spin_unlock_irqrestore(v, flags);			\
-}									\
+	_atomic_spin_lock_irqsave(p, flags);				\
+	*p c_op i;							\
+	_atomic_spin_unlock_irqrestore(p, flags);			\
+}
 
 #define ATOMIC_OP_RETURN(op, c_op)					\
 static __inline__ int atomic_##op##_return(int i, atomic_t *v)		\
 {									\
 	unsigned long flags;						\
+	volatile int *p = &v->counter;					\
 	int ret;							\
 									\
-	_atomic_spin_lock_irqsave(v, flags);				\
-	ret = (v->counter c_op i);					\
-	_atomic_spin_unlock_irqrestore(v, flags);			\
+	_atomic_spin_lock_irqsave(p, flags);				\
+	ret = (*p c_op i);						\
+	_atomic_spin_unlock_irqrestore(p, flags);			\
 									\
 	return ret;							\
 }
@@ -104,12 +106,14 @@ static __inline__ int atomic_##op##_return(int i, atomic_t *v)		\
 static __inline__ int atomic_fetch_##op(int i, atomic_t *v)		\
 {									\
 	unsigned long flags;						\
-	int ret;							\
+	volatile int *p = &v->counter;					\
+	int ret, tmp;							\
 									\
-	_atomic_spin_lock_irqsave(v, flags);				\
-	ret = v->counter;						\
-	v->counter c_op i;						\
-	_atomic_spin_unlock_irqrestore(v, flags);			\
+	_atomic_spin_lock_irqsave(p, flags);				\
+	ret = *p;							\
+	tmp = ret;							\
+	*p = (tmp c_op i);						\
+	_atomic_spin_unlock_irqrestore(p, flags);			\
 									\
 	return ret;							\
 }
@@ -146,21 +150,23 @@ ATOMIC_OPS(xor, ^=)
 static __inline__ void atomic64_##op(s64 i, atomic64_t *v)		\
 {									\
 	unsigned long flags;						\
+	volatile s64 *p = &v->counter;					\
 									\
-	_atomic_spin_lock_irqsave(v, flags);				\
-	v->counter c_op i;						\
-	_atomic_spin_unlock_irqrestore(v, flags);			\
-}									\
+	_atomic_spin_lock_irqsave(p, flags);				\
+	*p c_op i;							\
+	_atomic_spin_unlock_irqrestore(p, flags);			\
+}
 
 #define ATOMIC64_OP_RETURN(op, c_op)					\
 static __inline__ s64 atomic64_##op##_return(s64 i, atomic64_t *v)	\
 {									\
 	unsigned long flags;						\
+	volatile s64 *p = &v->counter;					\
 	s64 ret;							\
 									\
-	_atomic_spin_lock_irqsave(v, flags);				\
-	ret = (v->counter c_op i);					\
-	_atomic_spin_unlock_irqrestore(v, flags);			\
+	_atomic_spin_lock_irqsave(p, flags);				\
+	ret = (*p c_op i);						\
+	_atomic_spin_unlock_irqrestore(p, flags);			\
 									\
 	return ret;							\
 }
@@ -169,12 +175,14 @@ static __inline__ s64 atomic64_##op##_return(s64 i, atomic64_t *v)	\
 static __inline__ s64 atomic64_fetch_##op(s64 i, atomic64_t *v)		\
 {									\
 	unsigned long flags;						\
-	s64 ret;							\
+	volatile s64 *p = &v->counter;					\
+	s64 ret, tmp;							\
 									\
-	_atomic_spin_lock_irqsave(v, flags);				\
-	ret = v->counter;						\
-	v->counter c_op i;						\
-	_atomic_spin_unlock_irqrestore(v, flags);			\
+	_atomic_spin_lock_irqsave(p, flags);				\
+	ret = *p;							\
+	tmp = ret;							\
+	*p = (tmp c_op i);						\
+	_atomic_spin_unlock_irqrestore(p, flags);			\
 									\
 	return ret;							\
 }
@@ -205,11 +213,11 @@ static __inline__ void
 atomic64_set(atomic64_t *v, s64 i)
 {
 	unsigned long flags;
-	_atomic_spin_lock_irqsave(v, flags);
+	volatile s64 *p = &v->counter;
 
-	v->counter = i;
-
-	_atomic_spin_unlock_irqrestore(v, flags);
+	_atomic_spin_lock_irqsave(p, flags);
+	*p = i;
+	_atomic_spin_unlock_irqrestore(p, flags);
 }
 
 static __inline__ s64

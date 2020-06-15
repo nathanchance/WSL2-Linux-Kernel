@@ -14,10 +14,10 @@
 extern void __xchg_called_with_bad_pointer(void);
 
 /* __xchg32/64 defined in arch/parisc/lib/bitops.c */
-extern unsigned long __xchg8(char, char *);
-extern unsigned long __xchg32(int, int *);
+extern unsigned long __xchg8(char, __volatile__ char *);
+extern unsigned long __xchg32(int, __volatile__ int *);
 #ifdef CONFIG_64BIT
-extern unsigned long __xchg64(unsigned long, unsigned long *);
+extern unsigned long __xchg64(unsigned long, __volatile__ unsigned long *);
 #endif
 
 /* optimizer better get rid of switch since size is a constant */
