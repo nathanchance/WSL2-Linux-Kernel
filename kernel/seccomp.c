@@ -1091,7 +1091,7 @@ find_notification(struct seccomp_filter *filter, u64 id)
 static long seccomp_notify_recv(struct seccomp_filter *filter,
 				void __user *buf)
 {
-	struct seccomp_knotif *knotif, *cur;
+	struct seccomp_knotif *knotif = NULL, *cur;
 	struct seccomp_notif unotif;
 	ssize_t ret;
 
