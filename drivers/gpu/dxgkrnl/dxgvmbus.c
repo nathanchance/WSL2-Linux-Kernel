@@ -344,7 +344,7 @@ static uint8_t *dxg_map_iospace(uint64_t iospace_address, uint size,
 		return NULL;
 	}
 
-	down_read(&current->mm->mmap_sem);
+	mmap_read_lock(current->mm);
 	vma = find_vma(current->mm, (unsigned long)va);
 	if (vma) {
 		pgprot_t prot = vma->vm_page_prot;
@@ -362,7 +362,7 @@ static uint8_t *dxg_map_iospace(uint64_t iospace_address, uint size,
 		pr_err("failed to find vma: %p %lx", vma, va);
 		ret = STATUS_NO_MEMORY;
 	}
-	up_read(&current->mm->mmap_sem);
+	mmap_read_unlock(current->mm);
 
 	if (ret) {
 		dxg_unmap_iospace((void *)va, size);
