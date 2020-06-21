@@ -38,7 +38,7 @@ enum memcg_stat_item {
 	MEMCG_NR_STAT,
 };
 
-static __always_inline bool memcg_stat_item_in_bytes(enum memcg_stat_item item)
+static __always_inline bool memcg_stat_item_in_bytes(int item)
 {
 	if (item == MEMCG_PERCPU_B)
 		return true;

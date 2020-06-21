@@ -211,7 +211,7 @@ enum node_stat_item {
  * measured in pages). This defines the API part, the internal representation
  * might be different.
  */
-static __always_inline bool vmstat_item_in_bytes(enum node_stat_item item)
+static __always_inline bool vmstat_item_in_bytes(int item)
 {
 	/*
 	 * Global and per-node slab counters track slab pages.
