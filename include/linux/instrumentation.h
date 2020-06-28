@@ -2,7 +2,7 @@
 #ifndef __LINUX_INSTRUMENTATION_H
 #define __LINUX_INSTRUMENTATION_H
 
-#if defined(CONFIG_DEBUG_ENTRY) && defined(CONFIG_STACK_VALIDATION)
+#if (defined(CONFIG_DEBUG_ENTRY) || defined(CONFIG_LTO_CLANG)) && defined(CONFIG_STACK_VALIDATION)
 
 /* Begin/end of an instrumentation safe region */
 #define instrumentation_begin() ({					\
