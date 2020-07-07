@@ -2,8 +2,6 @@
 #
 # Makefile for livepatch test code.
 
-ccflags-remove-$(CONFIG_FUNCTION_TRACER) += $(CC_FLAGS_FTRACE)
-
 obj-$(CONFIG_TEST_LIVEPATCH) += test_klp_atomic_replace.o \
 				test_klp_callbacks_demo.o \
 				test_klp_callbacks_demo2.o \
