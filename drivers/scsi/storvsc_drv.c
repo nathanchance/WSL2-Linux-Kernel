@@ -399,7 +399,6 @@ static int storvsc_timeout = 180;
 static struct scsi_transport_template *fc_transport_template;
 #endif
 
-static struct scsi_host_template scsi_driver;
 static void storvsc_on_channel_callback(void *context);
 
 #define STORVSC_MAX_LUNS_PER_TARGET			255
@@ -699,12 +698,6 @@ static void handle_sc_creation(struct vmbus_channel *new_sc)
 
 	memset(&props, 0, sizeof(struct vmstorage_channel_properties));
 
-	/*
-	 * The size of vmbus_requestor is an upper bound on the number of requests
-	 * that can be in-progress at any one time across all channels.
-	 */
-	new_sc->rqstor_size = scsi_driver.can_queue;
-
 	ret = vmbus_open(new_sc,
 			 storvsc_ringbuffer_size,
 			 storvsc_ringbuffer_size,
@@ -733,7 +726,6 @@ static void  handle_multichannel_storage(struct hv_device *device, int max_chns)
 	struct storvsc_cmd_request *request;
 	struct vstor_packet *vstor_packet;
 	int ret, t;
-	u64 rqst_id;
 
 	/*
 	 * If the number of CPUs is artificially restricted, such as
@@ -768,23 +760,14 @@ static void  handle_multichannel_storage(struct hv_device *device, int max_chns)
 	vstor_packet->flags = REQUEST_COMPLETION_FLAG;
 	vstor_packet->sub_channel_count = num_sc;
 
-	rqst_id = vmbus_next_request_id(&device->channel->requestor,
-					(unsigned long)request);
-	if (rqst_id == VMBUS_RQST_ERROR) {
-		dev_err(dev, "No request id available\n");
-		return;
-	}
-
 	ret = vmbus_sendpacket(device->channel, vstor_packet,
 			       (sizeof(struct vstor_packet) -
 			       vmscsi_size_delta),
-			       rqst_id,
+			       (unsigned long)request,
 			       VM_PKT_DATA_INBAND,
 			       VMBUS_DATA_PACKET_FLAG_COMPLETION_REQUESTED);
 
 	if (ret != 0) {
-		/* Reclaim request ID to avoid leak of IDs */
-		vmbus_request_addr(&device->channel->requestor, rqst_id);
 		dev_err(dev, "Failed to create sub-channel: err=%d\n", ret);
 		return;
 	}
@@ -835,31 +818,20 @@ static int storvsc_execute_vstor_op(struct hv_device *device,
 {
 	struct vstor_packet *vstor_packet;
 	int ret, t;
-	u64 rqst_id;
 
 	vstor_packet = &request->vstor_packet;
 
 	init_completion(&request->wait_event);
 	vstor_packet->flags = REQUEST_COMPLETION_FLAG;
 
-	rqst_id = vmbus_next_request_id(&device->channel->requestor,
-					(unsigned long)request);
-	if (rqst_id == VMBUS_RQST_ERROR) {
-		dev_err(&device->device, "No request id available\n");
-		return -EAGAIN;
-	}
-
 	ret = vmbus_sendpacket(device->channel, vstor_packet,
 			       (sizeof(struct vstor_packet) -
 			       vmscsi_size_delta),
-			       rqst_id,
+			       (unsigned long)request,
 			       VM_PKT_DATA_INBAND,
 			       VMBUS_DATA_PACKET_FLAG_COMPLETION_REQUESTED);
-	if (ret != 0) {
-		/* Reclaim request ID to avoid leak of IDs */
-		vmbus_request_addr(&device->channel->requestor, rqst_id);
+	if (ret != 0)
 		return ret;
-	}
 
 	t = wait_for_completion_timeout(&request->wait_event, 5*HZ);
 	if (t == 0)
@@ -1270,17 +1242,9 @@ static void storvsc_on_channel_callback(void *context)
 	foreach_vmbus_pkt(desc, channel) {
 		void *packet = hv_pkt_data(desc);
 		struct storvsc_cmd_request *request;
-		u64 cmd_rqst;
 
-		cmd_rqst = vmbus_request_addr(&channel->requestor,
-					      desc->trans_id);
-		if (cmd_rqst == VMBUS_RQST_ERROR) {
-			dev_err(&device->device,
-				"Incorrect transaction id\n");
-			continue;
-		}
-
-		request = (struct storvsc_cmd_request *)(unsigned long)cmd_rqst;
+		request = (struct storvsc_cmd_request *)
+			((unsigned long)desc->trans_id);
 
 		if (request == &stor_device->init_request ||
 		    request == &stor_device->reset_request) {
@@ -1300,12 +1264,6 @@ static int storvsc_connect_to_vsp(struct hv_device *device, u32 ring_size,
 	int ret;
 
 	memset(&props, 0, sizeof(struct vmstorage_channel_properties));
-
-	/*
-	 * The size of vmbus_requestor is an upper bound on the number of requests
-	 * that can be in-progress at any one time across all channels.
-	 */
-	device->channel->rqstor_size = scsi_driver.can_queue;
 
 	ret = vmbus_open(device->channel,
 			 ring_size,
@@ -1420,7 +1378,6 @@ static int storvsc_do_io(struct hv_device *device,
 	int ret = 0;
 	const struct cpumask *node_mask;
 	int tgt_cpu;
-	u64 rqst_id;
 
 	vstor_packet = &request->vstor_packet;
 	stor_device = get_out_stor_device(device);
@@ -1515,13 +1472,6 @@ found_channel:
 
 	vstor_packet->operation = VSTOR_OPERATION_EXECUTE_SRB;
 
-	rqst_id = vmbus_next_request_id(&outgoing_channel->requestor,
-					(unsigned long)request);
-	if (rqst_id == VMBUS_RQST_ERROR) {
-		dev_err(&device->device, "No request id available\n");
-		return -EAGAIN;
-	}
-
 	if (request->payload->range.len) {
 
 		ret = vmbus_sendpacket_mpb_desc(outgoing_channel,
@@ -1529,21 +1479,18 @@ found_channel:
 				vstor_packet,
 				(sizeof(struct vstor_packet) -
 				vmscsi_size_delta),
-				rqst_id);
+				(unsigned long)request);
 	} else {
 		ret = vmbus_sendpacket(outgoing_channel, vstor_packet,
 			       (sizeof(struct vstor_packet) -
 				vmscsi_size_delta),
-			       rqst_id,
+			       (unsigned long)request,
 			       VM_PKT_DATA_INBAND,
 			       VMBUS_DATA_PACKET_FLAG_COMPLETION_REQUESTED);
 	}
 
-	if (ret != 0) {
-		/* Reclaim request ID to avoid leak of IDs */
-		vmbus_request_addr(&outgoing_channel->requestor, rqst_id);
+	if (ret != 0)
 		return ret;
-	}
 
 	atomic_inc(&stor_device->num_outstanding_req);
 
@@ -1624,7 +1571,7 @@ static int storvsc_host_reset_handler(struct scsi_cmnd *scmnd)
 	struct storvsc_cmd_request *request;
 	struct vstor_packet *vstor_packet;
 	int ret, t;
-	u64 rqst_id;
+
 
 	stor_device = get_out_stor_device(device);
 	if (!stor_device)
@@ -1640,24 +1587,14 @@ static int storvsc_host_reset_handler(struct scsi_cmnd *scmnd)
 	vstor_packet->flags = REQUEST_COMPLETION_FLAG;
 	vstor_packet->vm_srb.path_id = stor_device->path_id;
 
-	rqst_id = vmbus_next_request_id(&device->channel->requestor,
-					(unsigned long)&stor_device->reset_request);
-	if (rqst_id == VMBUS_RQST_ERROR) {
-		dev_err(&device->device, "No request id available\n");
-		return FAILED;
-	}
-
 	ret = vmbus_sendpacket(device->channel, vstor_packet,
 			       (sizeof(struct vstor_packet) -
 				vmscsi_size_delta),
-			       rqst_id,
+			       (unsigned long)&stor_device->reset_request,
 			       VM_PKT_DATA_INBAND,
 			       VMBUS_DATA_PACKET_FLAG_COMPLETION_REQUESTED);
-	if (ret != 0) {
-		/* Reclaim request ID to avoid leak of IDs */
-		vmbus_request_addr(&device->channel->requestor, rqst_id);
+	if (ret != 0)
 		return FAILED;
-	}
 
 	t = wait_for_completion_timeout(&request->wait_event, 5*HZ);
 	if (t == 0)
