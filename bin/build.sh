@@ -2,7 +2,7 @@
 
 set -eu
 
-BASE=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/.. && pwd)
+KRNL_SRC=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/.. && pwd)
 
 # Get parameters
 function parse_parameters() {
@@ -13,6 +13,7 @@ function parse_parameters() {
             *=*) export "${1?}" ;;
             -i | --incremental) INCREMENTAL=true ;;
             -j | --jobs) JOBS=${1} ;;
+            -k | --kernel-src) shift && KRNL_SRC=$(readlink -f "${1}") ;;
             -r | --release) RELEASE=true ;;
             -u | --update-config-only) UPDATE_CONFIG_ONLY=true ;;
             -v | --verbose) VERBOSE=true ;;
@@ -42,7 +43,7 @@ function set_toolchain() {
         nathan@ubuntu-*) TC_PATH=${CBL_LLVM:?}:${CBL_BNTL:?} ;;
         nathan@Ryzen-9-3900X) TC_PATH=${HOME}/src/tc-build/install/bin ;;
     esac
-    export PATH="${PO:+${PO}:}${BASE}/bin:${TC_PATH:+${TC_PATH}:}${PATH}"
+    export PATH="${PO:+${PO}:}${KRNL_SRC}/bin:${TC_PATH:+${TC_PATH}:}${PATH}"
 
     # Use ccache if it exists
     CCACHE=$(command -v ccache)
@@ -60,7 +61,7 @@ function set_toolchain() {
         "${LD:=ld.lld}" \
         "${LLVM_IAS:=0}" \
         "${NM:=llvm-nm}" \
-        "${O:=${BASE}/out/${ARCH}}" \
+        "${O:=${KRNL_SRC}/out/${ARCH}}" \
         "${OBJCOPY:=llvm-objcopy}" \
         "${OBJDUMP:=llvm-objdump}" \
         "${OBJSIZE:=llvm-size}" \
@@ -77,7 +78,7 @@ function set_toolchain() {
 function kmake() {
     set -x
     time make \
-        -C "${BASE}" \
+        -C "${KRNL_SRC}" \
         -"${SILENT_MAKE_FLAG:-}"kj"${JOBS}" \
         AR="${AR}" \
         ARCH="${ARCH}" \
@@ -90,7 +91,7 @@ function kmake() {
         LD="${LD}" \
         LLVM_IAS="${LLVM_IAS}" \
         NM="${NM}" \
-        O="$(realpath -m --relative-to="${BASE}" "${O}")" \
+        O="$(realpath -m --relative-to="${KRNL_SRC}" "${O}")" \
         OBJCOPY="${OBJCOPY}" \
         OBJDUMP="${OBJDUMP}" \
         OBJSIZE="${OBJSIZE}" \
@@ -116,7 +117,7 @@ function build_kernel() {
         case "$(id -un)@$(uname -n)" in
             nathan@ubuntu-* | nathan@Ryzen-9-3900X)
                 set -x
-                "${BASE}"/scripts/config \
+                "${KRNL_SRC}"/scripts/config \
                     --file "${O}"/.config \
                     -d MCORE2 \
                     -e MZEN2 \
@@ -131,7 +132,7 @@ function build_kernel() {
     kmake olddefconfig "${FINAL_MAKE_TARGETS[@]}"
 
     if ${UPDATE_CONFIG_ONLY}; then
-        cp -v "${O}"/defconfig "${BASE}"/${CONFIG}
+        cp -v "${O}"/defconfig "${KRNL_SRC}"/${CONFIG}
         exit 0
     fi
 
