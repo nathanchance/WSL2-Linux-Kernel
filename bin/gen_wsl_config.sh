@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
-BASE=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/.. && pwd)
-cd "${BASE}" || exit ${?}
+KRNL_SRC=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/.. && pwd)
+ORIG_KRNL_SRC=${KRNL_SRC}
+while (( ${#} )); do
+    case ${1} in
+        -k | --kernel-src) shift && KRNL_SRC=$(readlink -f "${1}") ;;
+    esac
+    shift
+done
+cd "${KRNL_SRC}" || exit ${?}
 
 CONFIG=arch/x86/configs/wsl2_defconfig
 
@@ -12,7 +19,7 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
 #   * DXGKRNL: After build 20150, GPU compute can be used
 #   * KVM: After build 19619, nested virtualization can be used
 #   * NET_9P_VIRTIO: Needed after build 19640, as drvfs uses this by default
-./scripts/config \
+"${KRNL_SRC}"/scripts/config \
     --file "${CONFIG}" \
     -d RAID6_PQ_BENCHMARK \
     -e DXGKRNL \
@@ -30,7 +37,7 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
 #   * LOCALVERSION_AUTO: Helpful when running development builds.
 #   * LOCALVERSION: Replace 'standard' with 'cbl' since this is a Clang built kernel.
 #   * FRAME_WARN: The 64-bit default is 2048. Clang uses more stack space so this avoids build-time warnings.
-./scripts/config \
+"${KRNL_SRC}"/scripts/config \
     --file "${CONFIG}" \
     -d FTRACE \
     -d MODULES \
@@ -42,7 +49,7 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
 
 # Enable/disable a bunch of checks based on kconfig-hardened-check
 # https://github.com/a13xp0p0v/kconfig-hardened-check
-./scripts/config \
+"${KRNL_SRC}"/scripts/config \
     --file "${CONFIG}" \
     -d AIO \
     -d DEBUG_FS \
@@ -78,4 +85,4 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
     -e SHUFFLE_PAGE_ALLOCATOR \
     --set-val ARCH_MMAP_RND_BITS 32
 
-./bin/build.sh -u
+"${ORIG_KRNL_SRC}"/bin/build.sh -k "${KRNL_SRC}" -u
