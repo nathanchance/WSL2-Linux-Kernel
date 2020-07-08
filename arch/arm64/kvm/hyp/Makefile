@@ -9,6 +9,7 @@ subdir-ccflags-y := -I$(incdir)				\
 		    -fno-stack-protector		\
 		    -DDISABLE_BRANCH_PROFILING		\
 		    $(DISABLE_STACKLEAK_PLUGIN)
+ccflags-remove-y := $(CC_FLAGS_CFI)
 
 obj-$(CONFIG_KVM) += vhe/ nvhe/
 obj-$(CONFIG_KVM_INDIRECT_VECTORS) += smccc_wa.o
