@@ -191,8 +191,6 @@ static long ns_ioctl(struct file *filp, unsigned int ioctl,
 {
 	struct user_namespace *user_ns;
 	struct pid_namespace *pid_ns;
-	struct task_struct *child_reaper;
-	struct pid *pid_struct;
 	pid_t pid;
 	struct ns_common *ns = get_proc_ns(file_inode(filp));
 	uid_t __user *argp;
