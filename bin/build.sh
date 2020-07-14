@@ -59,7 +59,7 @@ function set_toolchain() {
         "${HOSTLDFLAGS:=-fuse-ld=lld}" \
         "${JOBS:="$(nproc)"}" \
         "${LD:=ld.lld}" \
-        "${LLVM_IAS:=0}" \
+        "${LLVM_IAS:=1}" \
         "${NM:=llvm-nm}" \
         "${O:=${KRNL_SRC}/out/${ARCH}}" \
         "${OBJCOPY:=llvm-objcopy}" \
