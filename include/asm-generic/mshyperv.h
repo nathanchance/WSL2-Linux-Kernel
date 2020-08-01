@@ -27,6 +27,7 @@
 
 struct ms_hyperv_info {
 	u32 features;
+	u32 b_features;
 	u32 misc_features;
 	u32 hints;
 	u32 nested_features;
@@ -169,6 +170,7 @@ bool hv_is_hyperv_initialized(void);
 bool hv_is_hibernation_supported(void);
 void hyperv_cleanup(void);
 void hv_setup_sched_clock(void *sched_clock);
+u64 hv_query_ext_cap(void);
 #else /* CONFIG_HYPERV */
 static inline bool hv_is_hyperv_initialized(void) { return false; }
 static inline bool hv_is_hibernation_supported(void) { return false; }
