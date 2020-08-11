@@ -62,6 +62,12 @@ KBUILD_LDFLAGS += $(shell $(LD) --help 2>&1 | grep -q "\-z noreloc-overflow" \
 endif
 LDFLAGS_vmlinux := -T
 
+# Disable relocation relaxation if not linking as PIE
+ifeq ($(filter -pie,$(KBUILD_LDFLAGS)),)
+KBUILD_CFLAGS += $(call as-option, -Wa$(comma)-mrelax-relocations=no)
+KBUILD_AFLAGS += $(call as-option, -Wa$(comma)-mrelax-relocations=no)
+endif
+
 hostprogs	:= mkpiggy
 HOST_EXTRACFLAGS += -I$(srctree)/tools/include
 
