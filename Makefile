@@ -959,6 +959,12 @@ ifdef CONFIG_RETPOLINE
 KBUILD_CFLAGS += $(call cc-option,-fcf-protection=none)
 endif
 
+# The compiler may "libcall optimize" certain function calls into the below
+# functions, for architectures that don't use -ffreestanding. If we don't plan
+# to provide implementations of these routines, then prevent the compiler from
+# emitting calls to what will be undefined symbols.
+KBUILD_CFLAGS	+= -fno-builtin-stpcpy
+
 # include additional Makefiles when needed
 include-y			:= scripts/Makefile.extrawarn
 include-$(CONFIG_KASAN)		+= scripts/Makefile.kasan
