@@ -964,6 +964,7 @@ endif
 # to provide implementations of these routines, then prevent the compiler from
 # emitting calls to what will be undefined symbols.
 KBUILD_CFLAGS	+= -fno-builtin-stpcpy
+KBUILD_CFLAGS	+= -fno-builtin-bcmp
 
 # include additional Makefiles when needed
 include-y			:= scripts/Makefile.extrawarn
