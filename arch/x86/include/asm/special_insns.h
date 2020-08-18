@@ -17,7 +17,7 @@
  * all loads stores around it, which can hurt performance. Solution is to
  * use a variable and mimic reads and writes to it to enforce serialization
  */
-extern unsigned long __force_order;
+extern unsigned long __force_order __weak;
 
 void native_write_cr0(unsigned long val);
 
