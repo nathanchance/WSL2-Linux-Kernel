@@ -68,6 +68,10 @@ obj-$(CONFIG_COMPAT_VDSO)		+= vdso32/
 head-y					:= head.o
 extra-y					+= $(head-y) vmlinux.lds
 
+ifeq ($(CONFIG_LTO_CLANG),y)
+extra-$(CONFIG_MODULES)			+= ../../../scripts/module-lto.lds
+endif
+
 ifeq ($(CONFIG_DEBUG_EFI),y)
 AFLAGS_head.o += -DVMLINUX_PATH="\"$(realpath $(objtree)/vmlinux)\""
 endif
