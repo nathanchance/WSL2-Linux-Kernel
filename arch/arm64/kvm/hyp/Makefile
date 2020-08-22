@@ -12,3 +12,6 @@ subdir-ccflags-y := -I$(incdir)				\
 
 obj-$(CONFIG_KVM) += vhe/ nvhe/
 obj-$(CONFIG_KVM_INDIRECT_VECTORS) += smccc_wa.o
+
+# Disable CFI for the files in this directory
+KBUILD_CFLAGS := $(filter-out $(CC_FLAGS_CFI), $(KBUILD_CFLAGS))
