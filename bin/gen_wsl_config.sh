@@ -12,7 +12,7 @@ cd "${KRNL_SRC}" || exit ${?}
 
 CONFIG=arch/x86/configs/wsl2_defconfig
 
-curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-msft-wsl-4.19.y/Microsoft/config-wsl
+curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-msft-wsl-5.4.y/Microsoft/config-wsl
 
 # Quality of Life configs
 #   * RAID6_PQ_BENCHMARK: This is disbled in the stock Microsoft kernel (under a different name)
