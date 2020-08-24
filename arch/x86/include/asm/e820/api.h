@@ -12,7 +12,7 @@ extern unsigned long pci_mem_start;
 
 extern bool e820__mapped_raw_any(u64 start, u64 end, enum e820_type type);
 extern bool e820__mapped_any(u64 start, u64 end, enum e820_type type);
-extern bool e820__mapped_all(u64 start, u64 end, enum e820_type type);
+extern bool e820__mapped_all(u64 start, u64 end, unsigned type);
 
 extern void e820__range_add   (u64 start, u64 size, enum e820_type type);
 extern u64  e820__range_update(u64 start, u64 size, enum e820_type old_type, enum e820_type new_type);
