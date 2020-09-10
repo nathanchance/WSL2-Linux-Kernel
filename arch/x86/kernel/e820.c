@@ -145,7 +145,7 @@ static struct e820_entry *__e820__mapped_all(u64 start, u64 end,
 /*
  * This function checks if the entire range <start,end> is mapped with type.
  */
-bool __init e820__mapped_all(u64 start, u64 end, enum e820_type type)
+bool __init e820__mapped_all(u64 start, u64 end, unsigned type)
 {
 	return __e820__mapped_all(start, end, type);
 }
