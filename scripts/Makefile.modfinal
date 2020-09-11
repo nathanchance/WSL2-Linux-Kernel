@@ -34,15 +34,34 @@ ARCH_POSTLINK := $(wildcard $(srctree)/arch/$(SRCARCH)/Makefile.postlink)
 ko_deps := %.mod.o %.o
 
 ifdef CONFIG_LTO_CLANG
+ifndef CONFIG_CFI_CLANG
 # With CONFIG_LTO_CLANG, reuse the object file we compiled for modpost to
 # avoid a second slow LTO link
 prelink-ext := .lto
 ko_deps := %.lto.o %.mod.o
 
-ifdef CONFIG_CFI_CLANG
+else # CONFIG_CFI_CLANG
+
 # With CFI, we have to link .mod.c together with the rest of the bitcode,
 # so the compiler sets up pointers in struct module correctly.
 prelink-ext := .cfi
+cfi_deps := $(ko_deps)
+# We now need only .cfi.o for linking the final module
+ko_deps := %.cfi.o
+
+ifndef CONFIG_CFI_PERMISSIVE
+# When in enforcing mode, inject our own CFI error handler to each module
+# for more informative error messages without -fsanitize-trap.
+cfi_deps += %.cfi_check_fail.o
+
+quiet_cmd_cc_nocfi = CC [M]  $@
+      cmd_cc_nocfi = 							\
+		$(CC) $(filter-out $(CC_FLAGS_CFI) $(CC_FLAGS_FTRACE),	\
+			$(c_flags)) -c -o $@ $<
+
+%.cfi_check_fail.o: %.cfi_check_fail.c
+	$(call cmd,cc_nocfi)
+endif
 
 quiet_cmd_cc_cfi_link_modules = CFI [M] $@
 cmd_cc_cfi_link_modules =						\
@@ -51,11 +70,9 @@ cmd_cc_cfi_link_modules =						\
 			echo -T $(@:.cfi.o=.o.symversions))		\
 	--whole-archive $^
 
-%.cfi.o: %.mod.o %.o
+%.cfi.o: $(cfi_deps) 
 	$(call if_changed,cc_cfi_link_modules)
 
-# We now need only .cfi.o for linking the final module
-ko_deps := %.cfi.o
 endif # CONFIG_CFI_CLANG
 
 # ELF processing was skipped earlier because we didn't have native code,

@@ -38,6 +38,8 @@ static int sec_mismatch_fatal = 0;
 static int ignore_missing_files;
 /* If set to 1, only warn (instead of error) about missing ns imports */
 static int allow_missing_ns_imports;
+/* Generate .cfi_check_fail.c in addition to .mod.c? */
+static int generate_cfi_check_fail = 0;
 
 enum export {
 	export_plain,      export_unused,     export_gpl,
@@ -2372,6 +2374,16 @@ static void add_srcversion(struct buffer *b, struct module *mod)
 	}
 }
 
+static void add_cfi_check_fail(struct buffer *b)
+{
+	buf_printf(b, "#if defined(CONFIG_CFI_CLANG) && !defined(CONFIG_CFI_PERMISSIVE)\n");
+	buf_printf(b, "#include <linux/kernel.h>\n\n");
+	buf_printf(b, "void __cfi_check_fail(void *data, void *ptr) {\n");
+	buf_printf(b, "\tpanic(\"CFI failure (target: %%pS)\\n\", ptr);\n");
+	buf_printf(b, "}\n");
+	buf_printf(b, "#endif\n");
+}
+
 static void write_buf(struct buffer *b, const char *fname)
 {
 	FILE *file;
@@ -2557,7 +2569,7 @@ int main(int argc, char **argv)
 	struct dump_list *dump_read_start = NULL;
 	struct dump_list **dump_read_iter = &dump_read_start;
 
-	while ((opt = getopt(argc, argv, "ei:mnT:o:awENd:")) != -1) {
+	while ((opt = getopt(argc, argv, "ei:mnT:o:awENd:c")) != -1) {
 		switch (opt) {
 		case 'e':
 			external_module = 1;
@@ -2594,6 +2606,9 @@ int main(int argc, char **argv)
 			break;
 		case 'd':
 			missing_namespace_deps = optarg;
+			break;
+		case 'c':
+			generate_cfi_check_fail = 1;
 			break;
 		default:
 			exit(1);
@@ -2646,6 +2661,13 @@ int main(int argc, char **argv)
 
 		sprintf(fname, "%s.mod.c", mod->name);
 		write_if_changed(&buf, fname);
+
+		if (generate_cfi_check_fail) {
+			buf.pos = 0;
+			add_cfi_check_fail(&buf);
+			sprintf(fname, "%s.cfi_check_fail.c", mod->name);
+			write_if_changed(&buf, fname);
+		}
 	}
 
 	if (missing_namespace_deps)

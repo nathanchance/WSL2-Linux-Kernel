@@ -1848,6 +1848,7 @@ clean: $(clean-dirs)
 		-o -name '*.c.[012]*.*' \
 		-o -name '*.ll' \
 		-o -name '*.gcno' \
+		-o -name '*.cfi_check_fail.c' \
 		-o -name '*.*.symversions' \) -type f -print | xargs rm -f
 
 # Generate tags for editors
