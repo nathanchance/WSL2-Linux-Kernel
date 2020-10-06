@@ -88,6 +88,7 @@ function kmake() {
         HOSTCXX="${HOSTCXX}" \
         HOSTLD="${HOSTLD}" \
         HOSTLDFLAGS="${HOSTLDFLAGS}" \
+        KCFLAGS="${KCFLAGS--Werror}" \
         LD="${LD}" \
         LLVM="${LLVM}" \
         LLVM_IAS="${LLVM_IAS}" \
