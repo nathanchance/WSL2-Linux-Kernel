@@ -17,7 +17,6 @@
 #include <ctype.h>
 #include <string.h>
 #include <limits.h>
-#include <stdbool.h>
 #include <errno.h>
 #include "modpost.h"
 #include "../../include/linux/license.h"
@@ -39,6 +38,8 @@ static int sec_mismatch_fatal = 0;
 static int ignore_missing_files;
 /* If set to 1, only warn (instead of error) about missing ns imports */
 static int allow_missing_ns_imports;
+/* Generate a CFI error handler? */
+static int generate_cfi_check_fail = 0;
 
 enum export {
 	export_plain,      export_unused,     export_gpl,
@@ -78,14 +79,6 @@ modpost_log(enum loglevel loglevel, const char *fmt, ...)
 
 	if (loglevel == LOG_FATAL)
 		exit(1);
-}
-
-static inline bool strends(const char *str, const char *postfix)
-{
-	if (strlen(str) < strlen(postfix))
-		return false;
-
-	return strcmp(str + strlen(str) - strlen(postfix), postfix) == 0;
 }
 
 void *do_nofail(void *ptr, const char *expr)
@@ -1984,6 +1977,10 @@ static char *remove_dot(char *s)
 		size_t m = strspn(s + n + 1, "0123456789");
 		if (m && (s[n + m] == '.' || s[n + m] == 0))
 			s[n] = 0;
+
+		/* strip trailing .lto */
+		if (strends(s, ".lto"))
+			s[strlen(s) - 4] = '\0';
 	}
 	return s;
 }
@@ -2007,6 +2004,9 @@ static void read_symbols(const char *modname)
 		/* strip trailing .o */
 		tmp = NOFAIL(strdup(modname));
 		tmp[strlen(tmp) - 2] = '\0';
+		/* strip trailing .lto */
+		if (strends(tmp, ".lto"))
+			tmp[strlen(tmp) - 4] = '\0';
 		mod = new_module(tmp);
 		free(tmp);
 	}
@@ -2286,6 +2286,17 @@ static void add_staging_flag(struct buffer *b, const char *name)
 		buf_printf(b, "\nMODULE_INFO(staging, \"Y\");\n");
 }
 
+static void add_cfi_check_fail(struct buffer *b)
+{
+	if (!generate_cfi_check_fail)
+		return;
+
+	buf_printf(b, "#include <linux/kernel.h>\n\n");
+	buf_printf(b, "void __cfi_check_fail(void *data, void *ptr) {\n");
+	buf_printf(b, "\tpanic(\"CFI failure (target: %%pS)\\n\", ptr);\n");
+	buf_printf(b, "}\n");
+}
+
 /**
  * Record CRCs for unresolved symbols
  **/
@@ -2293,6 +2304,7 @@ static int add_versions(struct buffer *b, struct module *mod)
 {
 	struct symbol *s, *exp;
 	int err = 0;
+	int has_panic = 0;
 
 	for (s = mod->unres; s; s = s->next) {
 		exp = find_symbol(s->name);
@@ -2324,8 +2336,18 @@ static int add_versions(struct buffer *b, struct module *mod)
 			err = 1;
 			break;
 		}
+		if (!has_panic && !strcmp(s->name, "panic"))
+			has_panic = 1;
+
 		buf_printf(b, "\t{ %#8x, \"%s\" },\n",
 			   s->crc, s->name);
+	}
+
+	if (generate_cfi_check_fail && !has_panic) {
+		/* __cfi_check_fail calls panic, record a CRC for it. */
+		exp = find_symbol("panic");
+		if (exp && exp->crc_valid)
+			buf_printf(b, "\t{ %#8x, \"panic\" },\n", exp->crc);
 	}
 
 	buf_printf(b, "};\n");
@@ -2559,7 +2581,7 @@ int main(int argc, char **argv)
 	struct dump_list *dump_read_start = NULL;
 	struct dump_list **dump_read_iter = &dump_read_start;
 
-	while ((opt = getopt(argc, argv, "ei:mnT:o:awENd:")) != -1) {
+	while ((opt = getopt(argc, argv, "ei:mnT:o:awENd:c")) != -1) {
 		switch (opt) {
 		case 'e':
 			external_module = 1;
@@ -2596,6 +2618,9 @@ int main(int argc, char **argv)
 			break;
 		case 'd':
 			missing_namespace_deps = optarg;
+			break;
+		case 'c':
+			generate_cfi_check_fail = 1;
 			break;
 		default:
 			exit(1);
@@ -2645,6 +2670,7 @@ int main(int argc, char **argv)
 		add_depends(&buf, mod);
 		add_moddevtable(&buf, mod);
 		add_srcversion(&buf, mod);
+		add_cfi_check_fail(&buf);
 
 		sprintf(fname, "%s.mod.c", mod->name);
 		write_if_changed(&buf, fname);
