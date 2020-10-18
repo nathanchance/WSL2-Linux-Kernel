@@ -55,6 +55,7 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
     -d DEBUG_FS \
     -d DEVMEM \
     -d HARDENED_USERCOPY_FALLBACK \
+    -d INIT_STACK_NONE \
     -d KSM \
     -d LEGACY_PTYS \
     -d PROC_KCORE \
