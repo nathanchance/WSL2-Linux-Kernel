@@ -87,4 +87,9 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
     -e F2FS_FS \
     -e FS_ENCRYPTION
 
+# Enable WireGuard support
+"${KRNL_SRC}"/scripts/config \
+    --file "${CONFIG}" \
+    -e WIREGUARD
+
 ./bin/build.sh -u
