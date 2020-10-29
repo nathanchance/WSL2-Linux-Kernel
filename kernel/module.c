@@ -2211,6 +2211,8 @@ void __weak module_arch_freeing_init(struct module *mod)
 {
 }
 
+static void cfi_cleanup(struct module *mod);
+
 /* Free a module, remove from lists, etc. */
 static void free_module(struct module *mod)
 {
@@ -2249,6 +2251,9 @@ static void free_module(struct module *mod)
 	/* Wait for RCU-sched synchronizing before releasing mod->list and buglist. */
 	synchronize_rcu();
 	mutex_unlock(&module_mutex);
+
+	/* Clean up CFI for the module. */
+	cfi_cleanup(mod);
 
 	/* This may be empty, but that's OK */
 	module_arch_freeing_init(mod);
@@ -3526,6 +3531,8 @@ int __weak module_finalize(const Elf_Ehdr *hdr,
 	return 0;
 }
 
+static void cfi_init(struct module *mod);
+
 static int post_relocation(struct module *mod, const struct load_info *info)
 {
 	/* Sort exception table now relocations are done. */
@@ -3537,6 +3544,9 @@ static int post_relocation(struct module *mod, const struct load_info *info)
 
 	/* Setup kallsyms-specific fields. */
 	add_kallsyms(mod, info);
+
+	/* Setup CFI for the module. */
+	cfi_init(mod);
 
 	/* Arch-specific module finalizing. */
 	return module_finalize(info->hdr, info->sechdrs, mod);
@@ -4338,6 +4348,36 @@ int module_kallsyms_on_each_symbol(int (*fn)(void *, const char *,
 	return 0;
 }
 #endif /* CONFIG_KALLSYMS */
+
+static void cfi_init(struct module *mod)
+{
+#ifdef CONFIG_CFI_CLANG
+	initcall_t *init;
+	exitcall_t *exit;
+
+	rcu_read_lock_sched();
+	mod->cfi_check = (cfi_check_fn)
+		find_kallsyms_symbol_value(mod, "__cfi_check");
+	init = (initcall_t *)
+		find_kallsyms_symbol_value(mod, "__cfi_jt_init_module");
+	exit = (exitcall_t *)
+		find_kallsyms_symbol_value(mod, "__cfi_jt_cleanup_module");
+	rcu_read_unlock_sched();
+
+	/* Fix init/exit functions to point to the CFI jump table */
+	if (init) mod->init = *init;
+	if (exit) mod->exit = *exit;
+
+	cfi_module_add(mod, module_addr_min, module_addr_max);
+#endif
+}
+
+static void cfi_cleanup(struct module *mod)
+{
+#ifdef CONFIG_CFI_CLANG
+	cfi_module_remove(mod, module_addr_min, module_addr_max);
+#endif
+}
 
 /* Maximum number of characters written by module_flags() */
 #define MODULE_FLAGS_BUF_SIZE (TAINT_FLAGS_COUNT + 4)
