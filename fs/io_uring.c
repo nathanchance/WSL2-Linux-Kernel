@@ -992,6 +992,10 @@ enum io_mem_account {
 	ACCT_PINNED,
 };
 
+static void destroy_fixed_file_ref_node(struct fixed_file_ref_node *ref_node);
+static struct fixed_file_ref_node *alloc_fixed_file_ref_node(
+			struct io_ring_ctx *ctx);
+
 static void __io_complete_rw(struct io_kiocb *req, long res, long res2,
 			     struct io_comp_state *cs);
 static void io_cqring_fill_event(struct io_kiocb *req, long res);
@@ -1501,6 +1505,13 @@ static bool io_grab_identity(struct io_kiocb *req)
 		spin_unlock_irq(&ctx->inflight_lock);
 		req->work.flags |= IO_WQ_WORK_FILES;
 	}
+	if (!(req->work.flags & IO_WQ_WORK_MM) &&
+	    (def->work_flags & IO_WQ_WORK_MM)) {
+		if (id->mm != current->mm)
+			return false;
+		mmgrab(id->mm);
+		req->work.flags |= IO_WQ_WORK_MM;
+	}
 
 	return true;
 }
@@ -1523,13 +1534,6 @@ static void io_prep_async_work(struct io_kiocb *req)
 	} else {
 		if (def->unbound_nonreg_file)
 			req->work.flags |= IO_WQ_WORK_UNBOUND;
-	}
-
-	/* ->mm can never change on us */
-	if (!(req->work.flags & IO_WQ_WORK_MM) &&
-	    (def->work_flags & IO_WQ_WORK_MM)) {
-		mmgrab(id->mm);
-		req->work.flags |= IO_WQ_WORK_MM;
 	}
 
 	/* if we fail grabbing identity, we must COW, regrab, and retry */
@@ -6332,19 +6336,28 @@ static struct io_wq_work *io_wq_submit_work(struct io_wq_work *work)
 	}
 
 	if (ret) {
-		/*
-		 * io_iopoll_complete() does not hold completion_lock to complete
-		 * polled io, so here for polled io, just mark it done and still let
-		 * io_iopoll_complete() complete it.
-		 */
-		if (req->ctx->flags & IORING_SETUP_IOPOLL) {
-			struct kiocb *kiocb = &req->rw.kiocb;
+		struct io_ring_ctx *lock_ctx = NULL;
 
-			kiocb_done(kiocb, ret, NULL);
-		} else {
-			req_set_fail_links(req);
-			io_req_complete(req, ret);
-		}
+		if (req->ctx->flags & IORING_SETUP_IOPOLL)
+			lock_ctx = req->ctx;
+
+		/*
+		 * io_iopoll_complete() does not hold completion_lock to
+		 * complete polled io, so here for polled io, we can not call
+		 * io_req_complete() directly, otherwise there maybe concurrent
+		 * access to cqring, defer_list, etc, which is not safe. Given
+		 * that io_iopoll_complete() is always called under uring_lock,
+		 * so here for polled io, we also get uring_lock to complete
+		 * it.
+		 */
+		if (lock_ctx)
+			mutex_lock(&lock_ctx->uring_lock);
+
+		req_set_fail_links(req);
+		io_req_complete(req, ret);
+
+		if (lock_ctx)
+			mutex_unlock(&lock_ctx->uring_lock);
 	}
 
 	return io_steal_work(req);
@@ -7222,14 +7235,28 @@ static void io_file_ref_kill(struct percpu_ref *ref)
 	complete(&data->done);
 }
 
+static void io_sqe_files_set_node(struct fixed_file_data *file_data,
+				  struct fixed_file_ref_node *ref_node)
+{
+	spin_lock_bh(&file_data->lock);
+	file_data->node = ref_node;
+	list_add_tail(&ref_node->node, &file_data->ref_list);
+	spin_unlock_bh(&file_data->lock);
+	percpu_ref_get(&file_data->refs);
+}
+
 static int io_sqe_files_unregister(struct io_ring_ctx *ctx)
 {
 	struct fixed_file_data *data = ctx->file_data;
-	struct fixed_file_ref_node *ref_node = NULL;
+	struct fixed_file_ref_node *backup_node, *ref_node = NULL;
 	unsigned nr_tables, i;
+	int ret;
 
 	if (!data)
 		return -ENXIO;
+	backup_node = alloc_fixed_file_ref_node(ctx);
+	if (!backup_node)
+		return -ENOMEM;
 
 	spin_lock_bh(&data->lock);
 	ref_node = data->node;
@@ -7241,7 +7268,18 @@ static int io_sqe_files_unregister(struct io_ring_ctx *ctx)
 
 	/* wait for all refs nodes to complete */
 	flush_delayed_work(&ctx->file_put_work);
-	wait_for_completion(&data->done);
+	do {
+		ret = wait_for_completion_interruptible(&data->done);
+		if (!ret)
+			break;
+		ret = io_run_task_work_sig();
+		if (ret < 0) {
+			percpu_ref_resurrect(&data->refs);
+			reinit_completion(&data->done);
+			io_sqe_files_set_node(data, backup_node);
+			return ret;
+		}
+	} while (1);
 
 	__io_sqe_files_unregister(ctx);
 	nr_tables = DIV_ROUND_UP(ctx->nr_user_files, IORING_MAX_FILES_TABLE);
@@ -7252,6 +7290,7 @@ static int io_sqe_files_unregister(struct io_ring_ctx *ctx)
 	kfree(data);
 	ctx->file_data = NULL;
 	ctx->nr_user_files = 0;
+	destroy_fixed_file_ref_node(backup_node);
 	return 0;
 }
 
@@ -7749,11 +7788,7 @@ static int io_sqe_files_register(struct io_ring_ctx *ctx, void __user *arg,
 		return PTR_ERR(ref_node);
 	}
 
-	file_data->node = ref_node;
-	spin_lock_bh(&file_data->lock);
-	list_add_tail(&ref_node->node, &file_data->ref_list);
-	spin_unlock_bh(&file_data->lock);
-	percpu_ref_get(&file_data->refs);
+	io_sqe_files_set_node(file_data, ref_node);
 	return ret;
 out_fput:
 	for (i = 0; i < ctx->nr_user_files; i++) {
@@ -7909,11 +7944,7 @@ static int __io_sqe_files_update(struct io_ring_ctx *ctx,
 
 	if (needs_switch) {
 		percpu_ref_kill(&data->node->refs);
-		spin_lock_bh(&data->lock);
-		list_add_tail(&ref_node->node, &data->ref_list);
-		data->node = ref_node;
-		spin_unlock_bh(&data->lock);
-		percpu_ref_get(&ctx->file_data->refs);
+		io_sqe_files_set_node(data, ref_node);
 	} else
 		destroy_fixed_file_ref_node(ref_node);
 
@@ -9405,9 +9436,9 @@ static int io_uring_install_fd(struct io_ring_ctx *ctx, struct file *file)
 static struct file *io_uring_get_file(struct io_ring_ctx *ctx)
 {
 	struct file *file;
+#if defined(CONFIG_UNIX)
 	int ret;
 
-#if defined(CONFIG_UNIX)
 	ret = sock_create_kern(&init_net, PF_UNIX, SOCK_RAW, IPPROTO_IP,
 				&ctx->ring_sock);
 	if (ret)

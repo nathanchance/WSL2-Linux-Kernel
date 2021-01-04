@@ -1649,7 +1649,7 @@ static int gfx_v9_0_init_microcode(struct amdgpu_device *adev)
 	}
 
 	/* No CPG in Arcturus */
-	if (adev->asic_type != CHIP_ARCTURUS) {
+	if (adev->gfx.num_gfx_rings) {
 		r = gfx_v9_0_init_cp_gfx_microcode(adev, chip_name);
 		if (r)
 			return r;
@@ -2635,7 +2635,14 @@ static void gfx_v9_0_wait_for_rlc_serdes(struct amdgpu_device *adev)
 static void gfx_v9_0_enable_gui_idle_interrupt(struct amdgpu_device *adev,
 					       bool enable)
 {
-	u32 tmp = RREG32_SOC15(GC, 0, mmCP_INT_CNTL_RING0);
+	u32 tmp;
+
+	/* don't toggle interrupts that are only applicable
+	 * to me0 pipe0 on AISCs that have me0 removed */
+	if (!adev->gfx.num_gfx_rings)
+		return;
+
+	tmp= RREG32_SOC15(GC, 0, mmCP_INT_CNTL_RING0);
 
 	tmp = REG_SET_FIELD(tmp, CP_INT_CNTL_RING0, CNTX_BUSY_INT_ENABLE, enable ? 1 : 0);
 	tmp = REG_SET_FIELD(tmp, CP_INT_CNTL_RING0, CNTX_EMPTY_INT_ENABLE, enable ? 1 : 0);
@@ -3824,7 +3831,7 @@ static int gfx_v9_0_cp_resume(struct amdgpu_device *adev)
 		gfx_v9_0_enable_gui_idle_interrupt(adev, false);
 
 	if (adev->firmware.load_type != AMDGPU_FW_LOAD_PSP) {
-		if (adev->asic_type != CHIP_ARCTURUS) {
+		if (adev->gfx.num_gfx_rings) {
 			/* legacy firmware loading */
 			r = gfx_v9_0_cp_gfx_load_microcode(adev);
 			if (r)
@@ -3840,7 +3847,7 @@ static int gfx_v9_0_cp_resume(struct amdgpu_device *adev)
 	if (r)
 		return r;
 
-	if (adev->asic_type != CHIP_ARCTURUS) {
+	if (adev->gfx.num_gfx_rings) {
 		r = gfx_v9_0_cp_gfx_resume(adev);
 		if (r)
 			return r;
@@ -3850,7 +3857,7 @@ static int gfx_v9_0_cp_resume(struct amdgpu_device *adev)
 	if (r)
 		return r;
 
-	if (adev->asic_type != CHIP_ARCTURUS) {
+	if (adev->gfx.num_gfx_rings) {
 		ring = &adev->gfx.gfx_ring[0];
 		r = amdgpu_ring_test_helper(ring);
 		if (r)
@@ -3886,7 +3893,7 @@ static void gfx_v9_0_init_tcp_config(struct amdgpu_device *adev)
 
 static void gfx_v9_0_cp_enable(struct amdgpu_device *adev, bool enable)
 {
-	if (adev->asic_type != CHIP_ARCTURUS)
+	if (adev->gfx.num_gfx_rings)
 		gfx_v9_0_cp_gfx_enable(adev, enable);
 	gfx_v9_0_cp_compute_enable(adev, enable);
 }
@@ -4027,7 +4034,7 @@ static int gfx_v9_0_soft_reset(void *handle)
 		/* stop the rlc */
 		adev->gfx.rlc.funcs->stop(adev);
 
-		if (adev->asic_type != CHIP_ARCTURUS)
+		if (adev->gfx.num_gfx_rings)
 			/* Disable GFX parsing/prefetching */
 			gfx_v9_0_cp_gfx_enable(adev, false);
 
