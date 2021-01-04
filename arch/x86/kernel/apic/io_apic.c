@@ -1396,9 +1396,12 @@ void __init enable_IO_APIC(void)
 	}
 
 	/*
-	 * Do not trust the IO-APIC being empty at bootup
+	 * In hyper-v we can trust that IO_APIC will be cleared on boot. A call to
+	 * clear_IO_APIC is therefore not necessary or desirable since it can
+	 * cause significant delays in boot time.
+	 *
+	 * clear_IO_APIC();
 	 */
-	clear_IO_APIC();
 }
 
 void native_restore_boot_irq_mode(void)
