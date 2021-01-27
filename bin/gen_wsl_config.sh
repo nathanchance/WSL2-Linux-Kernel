@@ -95,4 +95,9 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
     -e NETFILTER_XT_MATCH_CONNMARK \
     -e WIREGUARD
 
+# Enable io_uring support
+"${KRNL_SRC}"/scripts/config \
+    --file "${CONFIG}" \
+    -e IO_URING
+
 ./bin/build.sh -u
