@@ -837,7 +837,7 @@ int create_existing_sysmem(struct dxgdevice *device,
 			   const void *sysmem)
 {
 	int ret1 = 0;
-	void *kmem;
+	void *kmem = NULL;
 	int ret = 0;
 	struct dxgkvmb_command_setexistingsysmemstore set_store_command = { };
 	u64 alloc_size = host_alloc->allocation_size;
