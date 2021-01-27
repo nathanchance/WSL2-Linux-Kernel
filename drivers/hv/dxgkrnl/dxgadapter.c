@@ -667,7 +667,8 @@ void dxgresource_destroy(struct dxgresource *resource)
 
 void dxgresource_acquire_reference(struct dxgresource *resource)
 {
-	refcount_inc_not_zero(&resource->refcount);
+	if (refcount_inc_not_zero(&resource->refcount))
+		;
 }
 
 void dxgresource_release_reference(struct dxgresource *resource)
@@ -1330,7 +1331,8 @@ void dxgsyncobject_acquire_reference(struct dxgsyncobject *syncobj)
 {
 	TRACE_DEBUG(1, "%s 0x%p %d",
 		    __func__, syncobj, refcount_read(&syncobj->refcount));
-	refcount_inc_not_zero(&syncobj->refcount);
+	if (refcount_inc_not_zero(&syncobj->refcount))
+		;
 }
 
 void dxgsyncobject_release_reference(struct dxgsyncobject *syncobj)
