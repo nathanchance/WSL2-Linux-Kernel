@@ -38,7 +38,7 @@ function set_toolchain() {
         nathan@ubuntu-*) TC_PATH=${CBL_LLVM:?}:${CBL_BNTL:?} ;;
         nathan@Ryzen-9-3900X) TC_PATH=${HOME}/src/tc-build/install/bin ;;
     esac
-    export PATH="${PO:+${PO}:}${TC_PATH:+${TC_PATH}:}${PATH}"
+    export PATH="${PO:+${PO}:}${BASE}/bin:${TC_PATH:+${TC_PATH}:}${PATH}"
 
     # Use ccache if it exists
     CCACHE=$(command -v ccache)
