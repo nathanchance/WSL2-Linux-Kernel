@@ -37,7 +37,7 @@ function set_toolchain() {
     case "$(id -un)@$(uname -n)" in
         nathan@debian-* | nathan@MSI | nathan@Ryzen-9-3900X | nathan@ubuntu-*) [[ -d ${CBL_LLVM_BNTL:?} ]] && TC_PATH=${CBL_LLVM_BNTL} ;;
     esac
-    export PATH="${PO:+${PO}:}${TC_PATH:+${TC_PATH}:}${PATH}"
+    export PATH="${PO:+${PO}:}${BASE}/bin:${TC_PATH:+${TC_PATH}:}${PATH}"
 
     # Use ccache if it exists
     CCACHE=$(command -v ccache)
