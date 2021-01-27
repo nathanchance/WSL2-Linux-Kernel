@@ -836,7 +836,7 @@ static inline void command_vm_to_host_init2(struct dxgkvmb_command_vm_to_host
 static inline void command_vgpu_to_host_init0(struct dxgkvmb_command_vm_to_host
 					      *command)
 {
-	command->command_type	= DXGK_VMBCOMMAND_INVALID;
+	command->command_type	= DXGK_VMBCOMMAND_INVALID_VM_TO_HOST;
 	command->process.v	= 0;
 	command->command_id	= 0;
 	command->channel_type	= DXGKVMB_VGPU_TO_HOST;
