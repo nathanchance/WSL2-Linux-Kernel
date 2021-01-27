@@ -48,30 +48,10 @@ function set_toolchain() {
     # Use ccache if it exists
     CCACHE=$(command -v ccache)
 
-    # Set default values if user did not supply them above
-    true \
-        "${AR:=llvm-ar}" \
-        "${CC:=${CCACHE:+ccache }clang}" \
-        "${HOSTAR:=llvm-ar}" \
-        "${HOSTCC:=${CCACHE:+ccache }clang}" \
-        "${HOSTCXX:=${CCACHE:+ccache }clang++}" \
-        "${HOSTLD:=ld.lld}" \
-        "${HOSTLDFLAGS:=-fuse-ld=lld}" \
-        "${JOBS:="$(nproc)"}" \
-        "${LD:=ld.lld}" \
-        "${LLVM:=1}" \
-        "${LLVM_IAS:=1}" \
-        "${NM:=llvm-nm}" \
-        "${O:=${KRNL_SRC}/build/${ARCH}}" \
-        "${OBJCOPY:=llvm-objcopy}" \
-        "${OBJDUMP:=llvm-objdump}" \
-        "${OBJSIZE:=llvm-size}" \
-        "${READELF:=llvm-readelf}" \
-        "${STRIP:=llvm-strip}"
-
     # Resolve O=
-    O=$(readlink -f -m "${O}")
+    O=$(readlink -f -m "${O:=${KRNL_SRC}/build/${ARCH}}")
 
+    : "${CC:=clang}"
     printf '\n\e[01;32mToolchain location:\e[0m %s\n\n' "$(dirname "$(command -v "${CC##* }")")"
     printf '\e[01;32mToolchain version:\e[0m %s \n\n' "$("${CC##* }" --version | head -n1)"
 }
@@ -80,26 +60,25 @@ function kmake() {
     set -x
     time make \
         -C "${KRNL_SRC}" \
-        -"${SILENT_MAKE_FLAG:-}"kj"${JOBS}" \
-        AR="${AR}" \
+        -"${SILENT_MAKE_FLAG:-}"kj"${JOBS:="$(nproc)"}" \
+        ${AR:+AR="${AR}"} \
         ARCH="${ARCH}" \
-        CC="${CC}" \
-        HOSTAR="${AR}" \
-        HOSTCC="${HOSTCC}" \
-        HOSTCXX="${HOSTCXX}" \
-        HOSTLD="${HOSTLD}" \
-        HOSTLDFLAGS="${HOSTLDFLAGS}" \
+        ${CCACHE:+CC="ccache ${CC}"} \
+        ${HOSTAR:+HOSTAR="${HOSTAR}"} \
+        ${CCACHE:+HOSTCC="ccache ${HOSTCC:-clang}"} \
+        ${HOSTLD:+HOSTLD="${HOSTLD}"} \
+        HOSTLDFLAGS="${HOSTLDFLAGS--fuse-ld=lld}" \
         KCFLAGS="${KCFLAGS--Werror}" \
-        LD="${LD}" \
-        LLVM="${LLVM}" \
-        LLVM_IAS="${LLVM_IAS}" \
-        NM="${NM}" \
+        ${LD:+LD="${LD}"} \
+        LLVM="${LLVM:=1}" \
+        LLVM_IAS="${LLVM_IAS:=1}" \
+        ${NM:+NM="${NM}"} \
         O="$(realpath -m --relative-to="${KRNL_SRC}" "${O}")" \
-        OBJCOPY="${OBJCOPY}" \
-        OBJDUMP="${OBJDUMP}" \
-        OBJSIZE="${OBJSIZE}" \
-        READELF="${READELF}" \
-        STRIP="${STRIP}" \
+        ${OBJCOPY:+OBJCOPY="${OBJCOPY}"} \
+        ${OBJDUMP:+OBJDUMP="${OBJDUMP}"} \
+        ${OBJSIZE:+OBJSIZE="${OBJSIZE}"} \
+        ${READELF:+READELF="${READELF}"} \
+        ${STRIP:+STRIP="${STRIP}"} \
         ${V:+V=${V}} \
         "${@}"
     set +x
