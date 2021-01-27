@@ -40,7 +40,7 @@ function set_toolchain() {
             [[ -n ${CBL_BIN:-} && ${CBL_BIN} ]] && TC_PATH=${CBL_BIN}
             ;;
     esac
-    export PATH="${PO:+${PO}:}${TC_PATH:+${TC_PATH}:}${PATH}"
+    export PATH="${PO:+${PO}:}${BASE}/bin:${TC_PATH:+${TC_PATH}:}${PATH}"
 
     # Use ccache if it exists
     CCACHE=$(command -v ccache)
