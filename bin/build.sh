@@ -6,8 +6,10 @@ BASE=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/.. && pwd)
 
 # Get parameters
 function parse_parameters() {
+    MY_TARGETS=()
     while ((${#})); do
         case ${1} in
+            */ | *.i | *.ko | *.o | vmlinux | zImage | modules) MY_TARGETS=("${MY_TARGETS[@]}" "${1}") ;;
             *=*) export "${1?}" ;;
             -i | --incremental) INCREMENTAL=true ;;
             -j | --jobs) JOBS=${1} ;;
@@ -16,6 +18,7 @@ function parse_parameters() {
         esac
         shift
     done
+    [[ -z ${MY_TARGETS[*]} ]] && MY_TARGETS=(all)
 
     # Handle architecture specific variables
     case ${ARCH:=x86_64} in
@@ -107,9 +110,9 @@ function build_kernel() {
     ${INCREMENTAL:=false} || CONFIG_MAKE_TARGETS=(distclean "${CONFIG_MAKE_TARGETS[@]}")
     kmake "${CONFIG_MAKE_TARGETS[@]}"
 
-    ${UPDATE_CONFIG_ONLY:=false} && FINAL_TARGET=savedefconfig
-    FINAL_MAKE_TARGETS=(olddefconfig "${FINAL_TARGET:=all}")
-    kmake "${FINAL_MAKE_TARGETS[@]}"
+    ${UPDATE_CONFIG_ONLY:=false} && FINAL_MAKE_TARGETS=(savedefconfig)
+    [[ -z ${FINAL_MAKE_TARGETS[*]} ]] && FINAL_MAKE_TARGETS=("${MY_TARGETS[@]}")
+    kmake olddefconfig "${FINAL_MAKE_TARGETS[@]}"
 
     if ${UPDATE_CONFIG_ONLY}; then
         cp -v "${O}"/defconfig "${BASE}"/${CONFIG}
