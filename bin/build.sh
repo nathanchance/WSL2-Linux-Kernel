@@ -40,7 +40,7 @@ function set_toolchain() {
     # Add toolchain folders to PATH and request path override (PO environment variable)
     case "$(id -un)@$(uname -n)" in
         nathan@ubuntu-*) TC_PATH=${CBL_LLVM:?}:${CBL_BNTL:?} ;;
-        nathan@Ryzen-9-3900X) TC_PATH=${HOME}/src/tc-build/install/bin ;;
+        nathan@Ryzen-9-3900X) TC_PATH=${HOME}/toolchains/cbl/llvm-binutils/bin ;;
     esac
     export PATH="${PO:+${PO}:}${BASE}/bin:${TC_PATH:+${TC_PATH}:}${PATH}"
 
