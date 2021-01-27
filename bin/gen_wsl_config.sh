@@ -83,4 +83,10 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
     -e SHUFFLE_PAGE_ALLOCATOR \
     --set-val ARCH_MMAP_RND_BITS 32
 
+# Enable F2FS support for direct mounting
+./scripts/config \
+    --file "${CONFIG}" \
+    -e F2FS_FS \
+    -e FS_ENCRYPTION
+
 ./bin/build.sh -u
