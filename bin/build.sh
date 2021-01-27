@@ -54,7 +54,7 @@ function set_toolchain() {
         "${JOBS:="$(nproc)"}" \
         "${LD:=ld.lld}" \
         "${LLVM:=1}" \
-        "${LLVM_IAS:=0}" \
+        "${LLVM_IAS:=1}" \
         "${NM:=llvm-nm}" \
         "${O:=${BASE}/build/${ARCH}}" \
         "${OBJCOPY:=llvm-objcopy}" \
