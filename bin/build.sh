@@ -2,7 +2,7 @@
 
 set -eu
 
-BASE=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/.. && pwd)
+KRNL_SRC=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/.. && pwd)
 
 # Get parameters
 function parse_parameters() {
@@ -15,6 +15,7 @@ function parse_parameters() {
             *=*) export "${1?}" ;;
             -i | --incremental) INCREMENTAL=true ;;
             -j | --jobs) JOBS=${1} ;;
+            -k | --kernel-src) shift && KRNL_SRC=$(readlink -f "${1}") ;;
             -u | --update-config-only) UPDATE_CONFIG_ONLY=true ;;
             -v | --verbose) VERBOSE=true ;;
         esac
@@ -42,7 +43,7 @@ function set_toolchain() {
     case "$(id -un)@$(uname -n)" in
         nathan@debian-* | nathan@MSI | nathan@Ryzen-9-3900X | nathan@ubuntu-*) [[ -d ${CBL_LLVM_BNTL:?} ]] && TC_PATH=${CBL_LLVM_BNTL} ;;
     esac
-    export PATH="${PO:+${PO}:}${BASE}/bin:${TC_PATH:+${TC_PATH}:}${PATH}"
+    export PATH="${PO:+${PO}:}${KRNL_SRC}/bin:${TC_PATH:+${TC_PATH}:}${PATH}"
 
     # Use ccache if it exists
     CCACHE=$(command -v ccache)
@@ -61,7 +62,7 @@ function set_toolchain() {
         "${LLVM:=1}" \
         "${LLVM_IAS:=1}" \
         "${NM:=llvm-nm}" \
-        "${O:=${BASE}/build/${ARCH}}" \
+        "${O:=${KRNL_SRC}/build/${ARCH}}" \
         "${OBJCOPY:=llvm-objcopy}" \
         "${OBJDUMP:=llvm-objdump}" \
         "${OBJSIZE:=llvm-size}" \
@@ -78,7 +79,7 @@ function set_toolchain() {
 function kmake() {
     set -x
     time make \
-        -C "${BASE}" \
+        -C "${KRNL_SRC}" \
         -"${SILENT_MAKE_FLAG:-}"kj"${JOBS}" \
         AR="${AR}" \
         ARCH="${ARCH}" \
@@ -93,7 +94,7 @@ function kmake() {
         LLVM="${LLVM}" \
         LLVM_IAS="${LLVM_IAS}" \
         NM="${NM}" \
-        O="$(realpath -m --relative-to="${BASE}" "${O}")" \
+        O="$(realpath -m --relative-to="${KRNL_SRC}" "${O}")" \
         OBJCOPY="${OBJCOPY}" \
         OBJDUMP="${OBJDUMP}" \
         OBJSIZE="${OBJSIZE}" \
@@ -117,7 +118,7 @@ function build_kernel() {
     kmake "${CONFIG_MAKE_TARGETS[@]}" "${FINAL_MAKE_TARGETS[@]}"
 
     if ${UPDATE_CONFIG_ONLY}; then
-        cp -v "${O}"/defconfig "${BASE}"/${CONFIG}
+        cp -v "${O}"/defconfig "${KRNL_SRC}"/${CONFIG}
         exit 0
     fi
 
