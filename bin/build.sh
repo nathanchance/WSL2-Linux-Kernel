@@ -106,14 +106,13 @@ function build_kernel() {
     # Build silently by default
     ${VERBOSE:=false} || SILENT_MAKE_FLAG=s
 
-    # Configure the kernel
+    # Create list of targets
     CONFIG_MAKE_TARGETS=("${CONFIG##*/}")
     ${INCREMENTAL:=false} || CONFIG_MAKE_TARGETS=(distclean "${CONFIG_MAKE_TARGETS[@]}")
-    kmake "${CONFIG_MAKE_TARGETS[@]}"
-
     ${UPDATE_CONFIG_ONLY:=false} && FINAL_MAKE_TARGETS=(savedefconfig)
-    [[ -z ${FINAL_MAKE_TARGETS[*]} ]] && FINAL_MAKE_TARGETS=("${MY_TARGETS[@]}")
-    kmake olddefconfig "${FINAL_MAKE_TARGETS[@]}"
+    [[ -z ${FINAL_MAKE_TARGETS[*]} ]] && FINAL_MAKE_TARGETS=(olddefconfig "${MY_TARGETS[@]}")
+
+    kmake "${CONFIG_MAKE_TARGETS[@]}" "${FINAL_MAKE_TARGETS[@]}"
 
     if ${UPDATE_CONFIG_ONLY}; then
         cp -v "${O}"/defconfig "${BASE}"/${CONFIG}
