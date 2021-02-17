@@ -6,10 +6,12 @@ BASE=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"/.. && pwd)
 
 # Get parameters
 function parse_parameters() {
-    MY_TARGETS=()
+    BUILD_TARGETS=()
+    CONFIG_TARGETS=()
     while ((${#})); do
         case ${1} in
-            */ | *.i | *.ko | *.o | vmlinux | zImage | modules) MY_TARGETS=("${MY_TARGETS[@]}" "${1}") ;;
+            *config) CONFIG_TARGETS+=("${1}") ;;
+            */ | *.i | *.ko | *.o | vmlinux | zImage | modules) BUILD_TARGETS+=("${1}") ;;
             *=*) export "${1?}" ;;
             -i | --incremental) INCREMENTAL=true ;;
             -j | --jobs) JOBS=${1} ;;
@@ -18,7 +20,7 @@ function parse_parameters() {
         esac
         shift
     done
-    [[ -z ${MY_TARGETS[*]} ]] && MY_TARGETS=(all)
+    [[ -z ${BUILD_TARGETS[*]} ]] && BUILD_TARGETS=(all)
 
     # Handle architecture specific variables
     case ${ARCH:=x86_64} in
@@ -107,10 +109,10 @@ function build_kernel() {
     ${VERBOSE:=false} || SILENT_MAKE_FLAG=s
 
     # Create list of targets
-    CONFIG_MAKE_TARGETS=("${CONFIG##*/}")
+    CONFIG_MAKE_TARGETS=("${CONFIG##*/}" "${CONFIG_TARGETS[@]}")
     ${INCREMENTAL:=false} || CONFIG_MAKE_TARGETS=(distclean "${CONFIG_MAKE_TARGETS[@]}")
     ${UPDATE_CONFIG_ONLY:=false} && FINAL_MAKE_TARGETS=(savedefconfig)
-    [[ -z ${FINAL_MAKE_TARGETS[*]} ]] && FINAL_MAKE_TARGETS=(olddefconfig "${MY_TARGETS[@]}")
+    [[ -z ${FINAL_MAKE_TARGETS[*]} ]] && FINAL_MAKE_TARGETS=(olddefconfig "${BUILD_TARGETS[@]}")
 
     kmake "${CONFIG_MAKE_TARGETS[@]}" "${FINAL_MAKE_TARGETS[@]}"
 
