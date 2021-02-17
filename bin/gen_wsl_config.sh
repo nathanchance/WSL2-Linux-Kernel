@@ -27,6 +27,8 @@ curl -LSso "${CONFIG}" https://github.com/microsoft/WSL2-Linux-Kernel/raw/linux-
     -e KVM_AMD \
     -e KVM_GUEST \
     -e KVM_INTEL \
+    -e VIRTIO_PCI_MODERN \
+    -e VIRTIO_PCI \
     -e NET_9P_VIRTIO
 
 # Initial tuning
