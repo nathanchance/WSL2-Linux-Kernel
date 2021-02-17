@@ -863,6 +863,9 @@ ifdef CONFIG_FTRACE_MCOUNT_USE_CC
     endif
   endif
 endif
+ifdef CONFIG_FTRACE_MCOUNT_USE_OBJTOOL
+  CC_FLAGS_USING	+= -DCC_USING_NOP_MCOUNT
+endif
 ifdef CONFIG_FTRACE_MCOUNT_USE_RECORDMCOUNT
   ifdef CONFIG_HAVE_C_RECORDMCOUNT
     BUILD_C_RECORDMCOUNT := y
@@ -898,10 +901,10 @@ endif
 
 ifdef CONFIG_LTO_CLANG
 ifdef CONFIG_LTO_CLANG_THIN
-CC_FLAGS_LTO	+= -flto=thin -fsplit-lto-unit
+CC_FLAGS_LTO	:= -flto=thin -fsplit-lto-unit
 KBUILD_LDFLAGS	+= --thinlto-cache-dir=$(extmod-prefix).thinlto-cache
 else
-CC_FLAGS_LTO	+= -flto
+CC_FLAGS_LTO	:= -flto
 endif
 CC_FLAGS_LTO	+= -fvisibility=hidden
 
@@ -912,6 +915,27 @@ endif
 ifdef CONFIG_LTO
 KBUILD_CFLAGS	+= $(CC_FLAGS_LTO)
 export CC_FLAGS_LTO
+endif
+
+ifdef CONFIG_CFI_CLANG
+CC_FLAGS_CFI	:= -fsanitize=cfi \
+		   -fsanitize-cfi-cross-dso \
+		   -fno-sanitize-cfi-canonical-jump-tables \
+		   -fno-sanitize-blacklist
+
+ifdef CONFIG_CFI_PERMISSIVE
+CC_FLAGS_CFI	+= -fsanitize-recover=cfi \
+		   -fno-sanitize-trap=cfi
+else
+ifndef CONFIG_UBSAN_TRAP
+CC_FLAGS_CFI	+= -ftrap-function=__ubsan_handle_cfi_check_fail_abort
+endif
+endif
+
+# If LTO flags are filtered out, we must also filter out CFI.
+CC_FLAGS_LTO	+= $(CC_FLAGS_CFI)
+KBUILD_CFLAGS	+= $(CC_FLAGS_CFI)
+export CC_FLAGS_CFI
 endif
 
 ifdef CONFIG_DEBUG_FORCE_FUNCTION_ALIGN_32B
@@ -1244,6 +1268,10 @@ uapi-asm-generic:
 PHONY += prepare-objtool prepare-resolve_btfids
 prepare-objtool: $(objtool_target)
 ifeq ($(SKIP_STACK_VALIDATION),1)
+ifdef CONFIG_FTRACE_MCOUNT_USE_OBJTOOL
+	@echo "error: Cannot generate __mcount_loc for CONFIG_DYNAMIC_FTRACE=y, please install libelf-dev, libelf-devel or elfutils-libelf-devel" >&2
+	@false
+endif
 ifdef CONFIG_UNWINDER_ORC
 	@echo "error: Cannot generate ORC metadata for CONFIG_UNWINDER_ORC=y, please install libelf-dev, libelf-devel or elfutils-libelf-devel" >&2
 	@false
