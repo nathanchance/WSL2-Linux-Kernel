@@ -19,8 +19,11 @@ User Space Memory Access
 Memory Allocation Controls
 ==========================
 
-.. kernel-doc:: include/linux/gfp.h
-   :internal:
+Functions which need to allocate memory often use GFP flags to express
+how that memory should be allocated. The GFP acronym stands for "get
+free pages", the underlying memory allocation function. Not every GFP
+flag is allowed to every function which may allocate memory. Most
+users will want to use a plain ``GFP_KERNEL``.
 
 .. kernel-doc:: include/linux/gfp.h
    :doc: Page mobility and placement hints
