@@ -71,6 +71,25 @@ static inline void copy_user_page(void *to, void *from, unsigned long vaddr,
 extern bool __virt_addr_valid(unsigned long kaddr);
 #define virt_addr_valid(kaddr)	__virt_addr_valid((unsigned long) (kaddr))
 
+#ifdef CONFIG_CFI_CLANG
+/*
+ * With non-canonical CFI jump tables, the compiler replaces function
+ * address references with the address of the function's CFI jump
+ * table entry. This results in __pa_symbol(function) returning the
+ * physical address of the jump table entry, which can lead to address
+ * space confusion since the jump table points to the function's
+ * virtual address. Therefore, use inline assembly to ensure we are
+ * always taking the address of the actual function.
+ */
+#define __va_function(x) ({						\
+	void *addr;							\
+	asm("leaq " __stringify(x) "(%%rip), %0\n\t" : "=r" (addr));	\
+	addr;								\
+})
+
+#define __pa_function(x) 	__pa_symbol(__va_function(x))
+#endif
+
 #endif	/* __ASSEMBLY__ */
 
 #include <asm-generic/memory_model.h>
