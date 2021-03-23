@@ -124,7 +124,7 @@ unsigned int paravirt_patch(u8 type, void *insn_buff, unsigned long addr,
 struct static_key paravirt_steal_enabled;
 struct static_key paravirt_steal_rq_enabled;
 
-static u64 native_steal_clock(int cpu)
+u64 native_steal_clock(int cpu)
 {
 	return 0;
 }
