@@ -403,7 +403,7 @@ DEFINE_IDTENTRY_DF(exc_double_fault)
 		 * which is what the stub expects, given that the faulting
 		 * RIP will be the IRET instruction.
 		 */
-		regs->ip = (unsigned long)asm_exc_general_protection;
+		regs->ip = (unsigned long)function_nocfi(asm_exc_general_protection);
 		regs->sp = (unsigned long)&gpregs->orig_ax;
 
 		return;
