@@ -381,7 +381,13 @@ static inline void set_desc_limit(struct desc_struct *desc, unsigned long limit)
 	desc->limit1 = (limit >> 16) & 0xf;
 }
 
-void alloc_intr_gate(unsigned int n, const void *addr);
+/*
+ * Use function_nocfi() to prevent the compiler from replacing function
+ * addresses with jump table addresses when CONFIG_CFI_CLANG is enabled.
+ */
+#define alloc_intr_gate(n, addr) __alloc_intr_gate(n, function_nocfi(addr))
+
+void __alloc_intr_gate(unsigned int n, const void *addr);
 
 static inline void init_idt_data(struct idt_data *data, unsigned int n,
 				 const void *addr)
