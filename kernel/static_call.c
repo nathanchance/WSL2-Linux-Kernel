@@ -503,12 +503,12 @@ long __static_call_return0(void)
 
 #ifdef CONFIG_STATIC_CALL_SELFTEST
 
-static int func_a(int x)
+int func_a(int x)
 {
 	return x+1;
 }
 
-static int func_b(int x)
+int func_b(int x)
 {
 	return x+2;
 }
