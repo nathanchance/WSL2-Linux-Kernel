@@ -309,8 +309,6 @@ DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_AMD,	PCI_DEVICE_ID_AMD_8151_0,	quirk_nopci
 
 static void quirk_amd_nvme_fixup(struct pci_dev *dev)
 {
-	struct pci_dev *rdev;
-
 	dev->dev_flags |= PCI_DEV_FLAGS_AMD_NVME_SIMPLE_SUSPEND;
 	pci_info(dev, "AMD simple suspend opt enabled\n");
 
