@@ -57,7 +57,10 @@ SECTIONS {
 	 */
 	.text : ALIGN_CFI {
 		*(.text.__cfi_check)
-		*(.text .text.[0-9a-zA-Z_]* .text..L.cfi*)
+		*(.text .text.[0-9a-zA-Z_]*)
+		__cfi_jt_start = .;
+		*(.text..L.cfi.jumptable .text..L.cfi.jumptable.*)
+		__cfi_jt_end = .;
 	}
 #endif
 }
