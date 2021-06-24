@@ -46,6 +46,9 @@ endif
 # non-deterministic coverage.
 KCOV_INSTRUMENT		:= n
 
+CFLAGS_REMOVE_idt.o		:= $(CC_FLAGS_CFI)
+CFLAGS_REMOVE_paravirt.o	:= $(CC_FLAGS_CFI)
+
 CFLAGS_head$(BITS).o	+= -fno-stack-protector
 
 CFLAGS_irq.o := -I $(srctree)/$(src)/../include/asm/trace

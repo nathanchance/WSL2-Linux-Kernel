@@ -291,6 +291,10 @@ static int read_sections(struct elf *elf)
 		if (sec->sh.sh_flags & SHF_EXECINSTR)
 			elf->text_size += sec->len;
 
+		/* Detect -fsanitize=cfi jump table sections */
+		if (!strncmp(sec->name, ".text..L.cfi.jumptable", 22))
+			sec->cfi_jt = true;
+
 		list_add_tail(&sec->list, &elf->sections);
 		elf_hash_add(section, &sec->hash, sec->idx);
 		elf_hash_add(section_name, &sec->name_hash, str_hash(sec->name));
@@ -576,6 +580,48 @@ static int read_rela_reloc(struct section *sec, int i, struct reloc *reloc, unsi
 	return 0;
 }
 
+static int fix_cfi_relocs(const struct elf *elf)
+{
+	struct section *sec, *tmpsec;
+	struct reloc *reloc, *tmpreloc;
+
+	list_for_each_entry_safe(sec, tmpsec, &elf->sections, list) {
+		list_for_each_entry_safe(reloc, tmpreloc, &sec->reloc_list, list) {
+			struct symbol *sym;
+			struct reloc *func_reloc;
+
+			/*
+			 * CONFIG_CFI_CLANG replaces function relocations to refer
+			 * to an intermediate jump table. Undo the conversion so
+			 * objtool can make sense of things.
+			 */
+			if (!reloc->sym->sec->cfi_jt)
+				continue;
+
+			if (reloc->sym->type == STT_SECTION)
+				sym = find_func_by_offset(reloc->sym->sec,
+							  reloc->addend);
+			else
+				sym = reloc->sym;
+
+			if (!sym || !sym->sec)
+				continue;
+
+			/*
+			 * The jump table immediately jumps to the actual function,
+			 * so look up the relocation there.
+			 */
+			func_reloc = find_reloc_by_dest_range(elf, sym->sec, sym->offset, 5);
+			if (!func_reloc || !func_reloc->sym)
+				continue;
+
+			reloc->sym = func_reloc->sym;
+		}
+	}
+
+	return 0;
+}
+
 static int read_relocs(struct elf *elf)
 {
 	struct section *sec;
@@ -638,6 +684,8 @@ static int read_relocs(struct elf *elf)
 		max_reloc = max(max_reloc, nr_reloc);
 		tot_reloc += nr_reloc;
 	}
+
+	fix_cfi_relocs(elf);
 
 	if (stats) {
 		printf("max_reloc: %lu\n", max_reloc);

@@ -11,6 +11,8 @@ endif
 CFLAGS_enlighten_pv.o		:= -fno-stack-protector
 CFLAGS_mmu_pv.o			:= -fno-stack-protector
 
+CFLAGS_REMOVE_enlighten_pv.o	:= $(CC_FLAGS_CFI)
+
 obj-y				+= enlighten.o
 obj-y				+= mmu.o
 obj-y				+= time.o
