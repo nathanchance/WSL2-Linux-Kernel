@@ -296,6 +296,13 @@ int dxgglobal_init_global_channel(void)
 		goto error;
 	}
 
+	ret = dxgvmb_send_set_iospace_region(dxgglobal->mmiospace_base,
+					     dxgglobal->mmiospace_size, 0);
+	if (ret < 0) {
+		pr_err("send_set_iospace_region failed");
+		goto error;
+	}
+
 	hv_set_drvdata(dxgglobal->hdev, dxgglobal);
 
 	dxgglobal->dxgdevice.minor = MISC_DYNAMIC_MINOR;

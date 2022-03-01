@@ -29,6 +29,7 @@
 
 struct dxgadapter;
 
+#include "misc.h"
 #include <uapi/misc/d3dkmthk.h>
 
 struct dxgvmbuschannel {
@@ -87,6 +88,13 @@ struct dxgglobal {
 
 extern struct dxgglobal		*dxgglobal;
 
+int dxgglobal_init_global_channel(void);
+void dxgglobal_destroy_global_channel(void);
+struct vmbus_channel *dxgglobal_get_vmbus(void);
+struct dxgvmbuschannel *dxgglobal_get_dxgvmbuschannel(void);
+int dxgglobal_acquire_channel_lock(void);
+void dxgglobal_release_channel_lock(void);
+
 struct dxgprocess {
 	/* Placeholder */
 };
@@ -115,5 +123,11 @@ static inline void guid_to_luid(guid_t *guid, struct winluid *luid)
 #define DXGK_VMBUS_INTERFACE_VERSION_OLD		27
 #define DXGK_VMBUS_INTERFACE_VERSION			40
 #define DXGK_VMBUS_LAST_COMPATIBLE_INTERFACE_VERSION	16
+
+void dxgvmb_initialize(void);
+int dxgvmb_send_set_iospace_region(u64 start, u64 len,
+				   struct vmbus_gpadl *shared_mem_gpadl);
+
+int ntstatus2int(struct ntstatus status);
 
 #endif
