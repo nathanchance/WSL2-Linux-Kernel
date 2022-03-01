@@ -14,6 +14,9 @@
 #ifndef _MISC_H_
 #define _MISC_H_
 
+/* Max characters in Windows path */
+#define WIN_MAX_PATH		260
+
 extern const struct d3dkmthandle zerohandle;
 
 /*
@@ -23,8 +26,22 @@ extern const struct d3dkmthandle zerohandle;
  * When a lower lock ois held, the higher lock should not be acquired.
  *
  * channel_lock
+ * fd_mutex
+ * plistmutex
+ * table_lock
+ * core_lock
+ * device_lock
+ * process->process_mutex
+ * adapter_list_lock
  * device_mutex
  */
+
+u16 *wcsncpy(u16 *dest, const u16 *src, size_t n);
+
+enum dxglockstate {
+	DXGLOCK_SHARED,
+	DXGLOCK_EXCL
+};
 
 /*
  * Some of the Windows return codes, which needs to be translated to Linux
