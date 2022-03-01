@@ -523,4 +523,24 @@ struct dxgkvmb_command_waitforsyncobjectfromgpu {
 	/* struct d3dkmthandle ObjectHandles[object_count] */
 };
 
+/* Returns the same structure */
+struct dxgkvmb_command_createhwqueue {
+	struct dxgkvmb_command_vgpu_to_host hdr;
+	struct ntstatus			status;
+	struct d3dkmthandle		hwqueue;
+	struct d3dkmthandle		hwqueue_progress_fence;
+	void				*hwqueue_progress_fence_cpuva;
+	u64				hwqueue_progress_fence_gpuva;
+	struct d3dkmthandle		context;
+	struct d3dddi_createhwqueueflags flags;
+	u32				priv_drv_data_size;
+	char				priv_drv_data[1];
+};
+
+/* The command returns ntstatus */
+struct dxgkvmb_command_destroyhwqueue {
+	struct dxgkvmb_command_vgpu_to_host hdr;
+	struct d3dkmthandle		hwqueue;
+};
+
 #endif /* _DXGVMBUS_H */

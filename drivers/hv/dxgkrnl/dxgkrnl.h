@@ -36,6 +36,7 @@ struct dxgresource;
 struct dxgsharedresource;
 struct dxgsyncobject;
 struct dxgsharedsyncobject;
+struct dxghwqueue;
 
 #include "misc.h"
 #include "hmgr.h"
@@ -532,7 +533,31 @@ struct dxgcontext *dxgcontext_create(struct dxgdevice *dev);
 void dxgcontext_destroy(struct dxgprocess *pr, struct dxgcontext *ctx);
 void dxgcontext_destroy_safe(struct dxgprocess *pr, struct dxgcontext *ctx);
 void dxgcontext_release(struct kref *refcount);
+int dxgcontext_add_hwqueue(struct dxgcontext *ctx,
+				       struct dxghwqueue *hq);
+void dxgcontext_remove_hwqueue(struct dxgcontext *ctx, struct dxghwqueue *hq);
+void dxgcontext_remove_hwqueue_safe(struct dxgcontext *ctx,
+				    struct dxghwqueue *hq);
 bool dxgcontext_is_active(struct dxgcontext *ctx);
+
+/*
+ * The object represent the execution hardware queue of a device.
+ */
+struct dxghwqueue {
+	/* entry in the context hw queue list */
+	struct list_head	hwqueue_list_entry;
+	struct kref		hwqueue_kref;
+	struct dxgcontext	*context;
+	struct dxgprocess	*process;
+	struct d3dkmthandle	progress_fence_sync_object;
+	struct d3dkmthandle	handle;
+	struct d3dkmthandle	device_handle;
+	void			*progress_fence_mapped_address;
+};
+
+struct dxghwqueue *dxghwqueue_create(struct dxgcontext *ctx);
+void dxghwqueue_destroy(struct dxgprocess *pr, struct dxghwqueue *hq);
+void dxghwqueue_release(struct kref *refcount);
 
 /*
  * A shared resource object is created to track the list of dxgresource objects,
@@ -758,6 +783,14 @@ int dxgvmb_send_wait_sync_object_cpu(struct dxgprocess *process,
 				     d3dkmt_waitforsynchronizationobjectfromcpu
 				     *args,
 				     u64 cpu_event);
+int dxgvmb_send_create_hwqueue(struct dxgprocess *process,
+			       struct dxgadapter *adapter,
+			       struct d3dkmt_createhwqueue *args,
+			       struct d3dkmt_createhwqueue *__user inargs,
+			       struct dxghwqueue *hq);
+int dxgvmb_send_destroy_hwqueue(struct dxgprocess *process,
+				struct dxgadapter *adapter,
+				struct d3dkmthandle handle);
 int dxgvmb_send_query_adapter_info(struct dxgprocess *process,
 				   struct dxgadapter *adapter,
 				   struct d3dkmt_queryadapterinfo *args);
