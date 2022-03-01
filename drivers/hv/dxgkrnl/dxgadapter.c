@@ -176,6 +176,26 @@ void dxgadapter_remove_shared_resource(struct dxgadapter *adapter,
 	up_write(&adapter->shared_resource_list_lock);
 }
 
+void dxgadapter_add_shared_syncobj(struct dxgadapter *adapter,
+				   struct dxgsharedsyncobject *object)
+{
+	down_write(&adapter->shared_resource_list_lock);
+	list_add_tail(&object->adapter_shared_syncobj_list_entry,
+		      &adapter->adapter_shared_syncobj_list_head);
+	up_write(&adapter->shared_resource_list_lock);
+}
+
+void dxgadapter_remove_shared_syncobj(struct dxgadapter *adapter,
+				      struct dxgsharedsyncobject *object)
+{
+	down_write(&adapter->shared_resource_list_lock);
+	if (object->adapter_shared_syncobj_list_entry.next) {
+		list_del(&object->adapter_shared_syncobj_list_entry);
+		object->adapter_shared_syncobj_list_entry.next = NULL;
+	}
+	up_write(&adapter->shared_resource_list_lock);
+}
+
 void dxgadapter_add_syncobj(struct dxgadapter *adapter,
 			    struct dxgsyncobject *object)
 {
@@ -956,6 +976,63 @@ void dxgprocess_adapter_remove_device(struct dxgdevice *device)
 	mutex_unlock(&device->adapter_info->device_list_mutex);
 }
 
+struct dxgsharedsyncobject *dxgsharedsyncobj_create(struct dxgadapter *adapter,
+						    struct dxgsyncobject *so)
+{
+	struct dxgsharedsyncobject *syncobj;
+
+	syncobj = vzalloc(sizeof(*syncobj));
+	if (syncobj) {
+		kref_init(&syncobj->ssyncobj_kref);
+		INIT_LIST_HEAD(&syncobj->shared_syncobj_list_head);
+		syncobj->adapter = adapter;
+		syncobj->type = so->type;
+		syncobj->monitored_fence = so->monitored_fence;
+		dxgadapter_add_shared_syncobj(adapter, syncobj);
+		kref_get(&adapter->adapter_kref);
+		init_rwsem(&syncobj->syncobj_list_lock);
+		mutex_init(&syncobj->fd_mutex);
+	}
+	return syncobj;
+}
+
+void dxgsharedsyncobj_release(struct kref *refcount)
+{
+	struct dxgsharedsyncobject *syncobj;
+
+	syncobj = container_of(refcount, struct dxgsharedsyncobject,
+			       ssyncobj_kref);
+	pr_debug("Destroying shared sync object %p", syncobj);
+	if (syncobj->adapter) {
+		dxgadapter_remove_shared_syncobj(syncobj->adapter,
+							syncobj);
+		kref_put(&syncobj->adapter->adapter_kref,
+				dxgadapter_release);
+	}
+	vfree(syncobj);
+}
+
+void dxgsharedsyncobj_add_syncobj(struct dxgsharedsyncobject *shared,
+				  struct dxgsyncobject *syncobj)
+{
+	pr_debug("%s 0x%p 0x%p", __func__, shared, syncobj);
+	kref_get(&shared->ssyncobj_kref);
+	down_write(&shared->syncobj_list_lock);
+	list_add(&syncobj->shared_syncobj_list_entry,
+		 &shared->shared_syncobj_list_head);
+	syncobj->shared_owner = shared;
+	up_write(&shared->syncobj_list_lock);
+}
+
+void dxgsharedsyncobj_remove_syncobj(struct dxgsharedsyncobject *shared,
+				     struct dxgsyncobject *syncobj)
+{
+	pr_debug("%s 0x%p", __func__, shared);
+	down_write(&shared->syncobj_list_lock);
+	list_del(&syncobj->shared_syncobj_list_entry);
+	up_write(&shared->syncobj_list_lock);
+}
+
 struct dxgsyncobject *dxgsyncobject_create(struct dxgprocess *process,
 					   struct dxgdevice *device,
 					   struct dxgadapter *adapter,
@@ -1090,6 +1167,12 @@ void dxgsyncobject_release(struct kref *refcount)
 	struct dxgsyncobject *syncobj;
 
 	syncobj = container_of(refcount, struct dxgsyncobject, syncobj_kref);
+	if (syncobj->shared_owner) {
+		dxgsharedsyncobj_remove_syncobj(syncobj->shared_owner,
+						syncobj);
+		kref_put(&syncobj->shared_owner->ssyncobj_kref,
+			 dxgsharedsyncobj_release);
+	}
 	if (syncobj->host_event)
 		vfree(syncobj->host_event);
 	vfree(syncobj);

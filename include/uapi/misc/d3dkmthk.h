@@ -690,6 +690,26 @@ struct d3dddi_openallocationinfo2 {
 	__u64			reserved[6];
 };
 
+struct d3dkmt_opensyncobjectfromnthandle2 {
+	__u64			nt_handle;
+	struct d3dkmthandle	device;
+	struct d3dddi_synchronizationobject_flags flags;
+	struct d3dkmthandle	sync_object;
+	__u32			reserved1;
+	union {
+		struct {
+#ifdef __KERNEL__
+			void	*fence_value_cpu_va;
+#else
+			__u64	fence_value_cpu_va;
+#endif
+			__u64	fence_value_gpu_va;
+			__u32	engine_affinity;
+		} monitored_fence;
+		__u64	reserved[8];
+	};
+};
+
 struct d3dkmt_openresourcefromnthandle {
 	struct d3dkmthandle	device;
 	__u32			reserved;

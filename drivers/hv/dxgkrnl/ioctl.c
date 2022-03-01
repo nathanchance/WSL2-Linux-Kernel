@@ -35,6 +35,33 @@ static char *errorstr(int ret)
 	return ret < 0 ? "err" : "";
 }
 
+static int dxgsyncobj_release(struct inode *inode, struct file *file)
+{
+	struct dxgsharedsyncobject *syncobj = file->private_data;
+
+	pr_debug("%s: %p", __func__, syncobj);
+	mutex_lock(&syncobj->fd_mutex);
+	kref_get(&syncobj->ssyncobj_kref);
+	syncobj->host_shared_handle_nt_reference--;
+	if (syncobj->host_shared_handle_nt_reference == 0) {
+		if (syncobj->host_shared_handle_nt.v) {
+			dxgvmb_send_destroy_nt_shared_object(
+					syncobj->host_shared_handle_nt);
+			pr_debug("Syncobj host_handle_nt destroyed: %x",
+				    syncobj->host_shared_handle_nt.v);
+			syncobj->host_shared_handle_nt.v = 0;
+		}
+		kref_put(&syncobj->ssyncobj_kref, dxgsharedsyncobj_release);
+	}
+	mutex_unlock(&syncobj->fd_mutex);
+	kref_put(&syncobj->ssyncobj_kref, dxgsharedsyncobj_release);
+	return 0;
+}
+
+static const struct file_operations dxg_syncobj_fops = {
+	.release = dxgsyncobj_release,
+};
+
 static int dxgsharedresource_release(struct inode *inode, struct file *file)
 {
 	struct dxgsharedresource *resource = file->private_data;
@@ -1584,6 +1611,7 @@ dxgk_create_sync_object(struct dxgprocess *process, void *__user inargs)
 	struct eventfd_ctx *event = NULL;
 	struct dxgsyncobject *syncobj = NULL;
 	bool device_lock_acquired = false;
+	struct dxgsharedsyncobject *syncobjgbl = NULL;
 	struct dxghosteventcpu *host_event = NULL;
 
 	ret = copy_from_user(&args, inargs, sizeof(args));
@@ -1644,6 +1672,22 @@ dxgk_create_sync_object(struct dxgprocess *process, void *__user inargs)
 	if (ret < 0)
 		goto cleanup;
 
+	if (args.info.flags.shared) {
+		if (args.info.shared_handle.v == 0) {
+			pr_err("shared handle should not be 0");
+			ret = -EINVAL;
+			goto cleanup;
+		}
+		syncobjgbl = dxgsharedsyncobj_create(device->adapter, syncobj);
+		if (syncobjgbl == NULL) {
+			ret = -ENOMEM;
+			goto cleanup;
+		}
+		dxgsharedsyncobj_add_syncobj(syncobjgbl, syncobj);
+
+		syncobjgbl->host_shared_handle = args.info.shared_handle;
+	}
+
 	ret = copy_to_user(inargs, &args, sizeof(args));
 	if (ret) {
 		pr_err("%s failed to copy output args", __func__);
@@ -1672,6 +1716,8 @@ cleanup:
 		if (event)
 			eventfd_ctx_put(event);
 	}
+	if (syncobjgbl)
+		kref_put(&syncobjgbl->ssyncobj_kref, dxgsharedsyncobj_release);
 	if (adapter)
 		dxgadapter_release_lock_shared(adapter);
 	if (device_lock_acquired)
@@ -1721,6 +1767,141 @@ dxgk_destroy_sync_object(struct dxgprocess *process, void *__user inargs)
 	ret = dxgvmb_send_destroy_sync_object(process, args.sync_object);
 
 cleanup:
+
+	pr_debug("ioctl:%s %s %d", errorstr(ret), __func__, ret);
+	return ret;
+}
+
+static int
+dxgk_open_sync_object_nt(struct dxgprocess *process, void *__user inargs)
+{
+	struct d3dkmt_opensyncobjectfromnthandle2 args;
+	struct dxgsyncobject *syncobj = NULL;
+	struct dxgsharedsyncobject *syncobj_fd = NULL;
+	struct file *file = NULL;
+	struct dxgdevice *device = NULL;
+	struct dxgadapter *adapter = NULL;
+	struct d3dddi_synchronizationobject_flags flags = { };
+	int ret;
+	bool device_lock_acquired = false;
+
+	pr_debug("ioctl: %s", __func__);
+
+	ret = copy_from_user(&args, inargs, sizeof(args));
+	if (ret) {
+		pr_err("%s failed to copy input args", __func__);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	args.sync_object.v = 0;
+
+	if (args.device.v) {
+		device = dxgprocess_device_by_handle(process, args.device);
+		if (device == NULL) {
+			return -EINVAL;
+			goto cleanup;
+		}
+	} else {
+		pr_err("device handle is missing");
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	ret = dxgdevice_acquire_lock_shared(device);
+	if (ret < 0)
+		goto cleanup;
+
+	device_lock_acquired = true;
+
+	adapter = device->adapter;
+	ret = dxgadapter_acquire_lock_shared(adapter);
+	if (ret < 0) {
+		adapter = NULL;
+		goto cleanup;
+	}
+
+	file = fget(args.nt_handle);
+	if (!file) {
+		pr_err("failed to get file from handle: %llx",
+			   args.nt_handle);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	if (file->f_op != &dxg_syncobj_fops) {
+		pr_err("invalid fd: %llx", args.nt_handle);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	syncobj_fd = file->private_data;
+	if (syncobj_fd == NULL) {
+		pr_err("invalid private data: %llx", args.nt_handle);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	flags.shared = 1;
+	flags.nt_security_sharing = 1;
+	syncobj = dxgsyncobject_create(process, device, adapter,
+				       syncobj_fd->type, flags);
+	if (syncobj == NULL) {
+		pr_err("failed to create sync object");
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+	dxgsharedsyncobj_add_syncobj(syncobj_fd, syncobj);
+
+	ret = dxgvmb_send_open_sync_object_nt(process, &dxgglobal->channel,
+					      &args, syncobj);
+	if (ret < 0) {
+		pr_err("failed to open sync object on host: %x",
+			syncobj_fd->host_shared_handle.v);
+		goto cleanup;
+	}
+
+	hmgrtable_lock(&process->handle_table, DXGLOCK_EXCL);
+	ret = hmgrtable_assign_handle(&process->handle_table, syncobj,
+				      HMGRENTRY_TYPE_DXGSYNCOBJECT,
+				      args.sync_object);
+	if (ret >= 0) {
+		syncobj->handle = args.sync_object;
+		kref_get(&syncobj->syncobj_kref);
+	}
+	hmgrtable_unlock(&process->handle_table, DXGLOCK_EXCL);
+
+	if (ret < 0)
+		goto cleanup;
+
+	ret = copy_to_user(inargs, &args, sizeof(args));
+	if (ret >= 0)
+		goto success;
+	pr_err("%s failed to copy output args", __func__);
+
+cleanup:
+
+	if (syncobj) {
+		dxgsyncobject_destroy(process, syncobj);
+		syncobj = NULL;
+	}
+
+	if (args.sync_object.v)
+		dxgvmb_send_destroy_sync_object(process, args.sync_object);
+
+success:
+
+	if (file)
+		fput(file);
+	if (syncobj)
+		kref_put(&syncobj->syncobj_kref, dxgsyncobject_release);
+	if (adapter)
+		dxgadapter_release_lock_shared(adapter);
+	if (device_lock_acquired)
+		dxgdevice_release_lock_shared(device);
+	if (device)
+		kref_put(&device->device_kref, dxgdevice_release);
 
 	pr_debug("ioctl:%s %s %d", errorstr(ret), __func__, ret);
 	return ret;
@@ -2380,6 +2561,30 @@ cleanup:
 }
 
 static int
+dxgsharedsyncobj_get_host_nt_handle(struct dxgsharedsyncobject *syncobj,
+				    struct dxgprocess *process,
+				    struct d3dkmthandle objecthandle)
+{
+	int ret = 0;
+
+	mutex_lock(&syncobj->fd_mutex);
+	if (syncobj->host_shared_handle_nt_reference == 0) {
+		ret = dxgvmb_send_create_nt_shared_object(process,
+			objecthandle,
+			&syncobj->host_shared_handle_nt);
+		if (ret < 0)
+			goto cleanup;
+		pr_debug("Host_shared_handle_ht: %x",
+			    syncobj->host_shared_handle_nt.v);
+		kref_get(&syncobj->ssyncobj_kref);
+	}
+	syncobj->host_shared_handle_nt_reference++;
+cleanup:
+	mutex_unlock(&syncobj->fd_mutex);
+	return ret;
+}
+
+static int
 dxgsharedresource_get_host_nt_handle(struct dxgsharedresource *resource,
 				     struct dxgprocess *process,
 				     struct d3dkmthandle objecthandle)
@@ -2404,6 +2609,7 @@ cleanup:
 }
 
 enum dxg_sharedobject_type {
+	DXG_SHARED_SYNCOBJECT,
 	DXG_SHARED_RESOURCE
 };
 
@@ -2420,6 +2626,10 @@ static int get_object_fd(enum dxg_sharedobject_type type,
 	}
 
 	switch (type) {
+	case DXG_SHARED_SYNCOBJECT:
+		file = anon_inode_getfile("dxgsyncobj",
+					  &dxg_syncobj_fops, object, 0);
+		break;
 	case DXG_SHARED_RESOURCE:
 		file = anon_inode_getfile("dxgresource",
 					  &dxg_resource_fops, object, 0);
@@ -2445,6 +2655,7 @@ dxgk_share_objects(struct dxgprocess *process, void *__user inargs)
 	enum hmgrentry_type object_type;
 	struct dxgsyncobject *syncobj = NULL;
 	struct dxgresource *resource = NULL;
+	struct dxgsharedsyncobject *shared_syncobj = NULL;
 	struct dxgsharedresource *shared_resource = NULL;
 	struct d3dkmthandle *handles = NULL;
 	int object_fd = 0;
@@ -2493,6 +2704,17 @@ dxgk_share_objects(struct dxgprocess *process, void *__user inargs)
 		ret = -EINVAL;
 	} else {
 		switch (object_type) {
+		case HMGRENTRY_TYPE_DXGSYNCOBJECT:
+			syncobj = obj;
+			if (syncobj->shared) {
+				kref_get(&syncobj->syncobj_kref);
+				shared_syncobj = syncobj->shared_owner;
+			} else {
+				pr_err("sync object is not shared");
+				syncobj = NULL;
+				ret = -EINVAL;
+			}
+			break;
 		case HMGRENTRY_TYPE_DXGRESOURCE:
 			resource = obj;
 			if (resource->shared_owner) {
@@ -2516,6 +2738,22 @@ dxgk_share_objects(struct dxgprocess *process, void *__user inargs)
 		goto cleanup;
 
 	switch (object_type) {
+	case HMGRENTRY_TYPE_DXGSYNCOBJECT:
+		ret = get_object_fd(DXG_SHARED_SYNCOBJECT, shared_syncobj,
+				    &object_fd);
+		if (ret < 0) {
+			pr_err("%s get_object_fd failed for sync object",
+				__func__);
+			goto cleanup;
+		}
+		ret = dxgsharedsyncobj_get_host_nt_handle(shared_syncobj,
+							  process,
+							  handles[0]);
+		if (ret < 0) {
+			pr_err("%s get_host_nt_handle failed", __func__);
+			goto cleanup;
+		}
+		break;
 	case HMGRENTRY_TYPE_DXGRESOURCE:
 		ret = get_object_fd(DXG_SHARED_RESOURCE, shared_resource,
 				    &object_fd);
@@ -3051,6 +3289,8 @@ void init_ioctls(void)
 		  LX_DXENUMADAPTERS3);
 	SET_IOCTL(/*0x3f */ dxgk_share_objects,
 		  LX_DXSHAREOBJECTS);
+	SET_IOCTL(/*0x40 */ dxgk_open_sync_object_nt,
+		  LX_DXOPENSYNCOBJECTFROMNTHANDLE2);
 	SET_IOCTL(/*0x41 */ dxgk_query_resource_info_nt,
 		  LX_DXQUERYRESOURCEINFOFROMNTHANDLE);
 	SET_IOCTL(/*0x42 */ dxgk_open_resource_nt,

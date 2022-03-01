@@ -35,6 +35,7 @@ struct dxgallocation;
 struct dxgresource;
 struct dxgsharedresource;
 struct dxgsyncobject;
+struct dxgsharedsyncobject;
 
 #include "misc.h"
 #include "hmgr.h"
@@ -122,6 +123,18 @@ struct dxghosteventcpu {
  * "device" syncobject, because the belong to a device (dxgdevice).
  * Device syncobjects are inserted to a list in dxgdevice.
  *
+ * A syncobject can be "shared", meaning that it could be opened by many
+ * processes.
+ *
+ * Shared syncobjects are inserted to a list in its owner
+ * (dxgsharedsyncobject).
+ * A syncobject can be shared by using a global handle or by using
+ * "NT security handle".
+ * When global handle sharing is used, the handle is created durinig object
+ * creation.
+ * When "NT security" is used, the handle for sharing is create be calling
+ * dxgk_share_objects. On Linux "NT handle" is represented by a file
+ * descriptor. FD points to dxgsharedsyncobject.
  */
 struct dxgsyncobject {
 	struct kref			syncobj_kref;
@@ -131,6 +144,8 @@ struct dxgsyncobject {
 	 * List entry in dxgadapter for other objects
 	 */
 	struct list_head		syncobj_list_entry;
+	/* List entry in the dxgsharedsyncobject object for shared synobjects */
+	struct list_head		shared_syncobj_list_entry;
 	/* Adapter, the syncobject belongs to. NULL for stopped sync obejcts. */
 	struct dxgadapter		*adapter;
 	/*
@@ -141,6 +156,8 @@ struct dxgsyncobject {
 	struct dxgprocess		*process;
 	/* Used by D3DDDI_CPU_NOTIFICATION objects */
 	struct dxghosteventcpu		*host_event;
+	/* Owner object for shared syncobjects */
+	struct dxgsharedsyncobject	*shared_owner;
 	/* CPU virtual address of the fence value for "device" syncobjects */
 	void				*mapped_address;
 	/* Handle in the process handle table */
@@ -171,6 +188,41 @@ struct dxgvgpuchannel {
 	struct winluid		adapter_luid;
 	struct hv_device	*hdev;
 };
+
+/*
+ * The object is used as parent of all sync objects, created for a shared
+ * syncobject. When a shared syncobject is created without NT security, the
+ * handle in the global handle table will point to this object.
+ */
+struct dxgsharedsyncobject {
+	struct kref			ssyncobj_kref;
+	/* Referenced by file descriptors */
+	int				host_shared_handle_nt_reference;
+	/* Corresponding handle in the host global handle table */
+	struct d3dkmthandle		host_shared_handle;
+	/*
+	 * When the sync object is shared by NT handle, this is the
+	 * corresponding handle in the host
+	 */
+	struct d3dkmthandle		host_shared_handle_nt;
+	/* Protects access to host_shared_handle_nt */
+	struct mutex			fd_mutex;
+	struct rw_semaphore		syncobj_list_lock;
+	struct list_head		shared_syncobj_list_head;
+	struct list_head		adapter_shared_syncobj_list_entry;
+	struct dxgadapter		*adapter;
+	enum d3dddi_synchronizationobject_type type;
+	u32				monitored_fence:1;
+};
+
+struct dxgsharedsyncobject *dxgsharedsyncobj_create(struct dxgadapter *adapter,
+						    struct dxgsyncobject
+						    *syncobj);
+void dxgsharedsyncobj_release(struct kref *refcount);
+void dxgsharedsyncobj_add_syncobj(struct dxgsharedsyncobject *sharedsyncobj,
+				  struct dxgsyncobject *syncobj);
+void dxgsharedsyncobj_remove_syncobj(struct dxgsharedsyncobject *sharedsyncobj,
+				     struct dxgsyncobject *syncobj);
 
 struct dxgsyncobject *dxgsyncobject_create(struct dxgprocess *process,
 					   struct dxgdevice *device,
@@ -362,6 +414,8 @@ struct dxgadapter {
 	struct list_head	adapter_process_list_head;
 	/* List of all dxgsharedresource objects */
 	struct list_head	shared_resource_list_head;
+	/* List of all dxgsharedsyncobject objects */
+	struct list_head	adapter_shared_syncobj_list_head;
 	/* List of all non-device dxgsyncobject objects */
 	struct list_head	syncobj_list_head;
 	/* This lock protects shared resource and syncobject lists */
@@ -389,6 +443,10 @@ void dxgadapter_release_lock_shared(struct dxgadapter *adapter);
 int dxgadapter_acquire_lock_exclusive(struct dxgadapter *adapter);
 void dxgadapter_acquire_lock_forced(struct dxgadapter *adapter);
 void dxgadapter_release_lock_exclusive(struct dxgadapter *adapter);
+void dxgadapter_add_shared_syncobj(struct dxgadapter *adapter,
+				   struct dxgsharedsyncobject *so);
+void dxgadapter_remove_shared_syncobj(struct dxgadapter *adapter,
+				      struct dxgsharedsyncobject *so);
 void dxgadapter_add_syncobj(struct dxgadapter *adapter,
 			    struct dxgsyncobject *so);
 void dxgadapter_remove_syncobj(struct dxgsyncobject *so);
@@ -703,6 +761,11 @@ int dxgvmb_send_wait_sync_object_cpu(struct dxgprocess *process,
 int dxgvmb_send_query_adapter_info(struct dxgprocess *process,
 				   struct dxgadapter *adapter,
 				   struct d3dkmt_queryadapterinfo *args);
+int dxgvmb_send_open_sync_object_nt(struct dxgprocess *process,
+				    struct dxgvmbuschannel *channel,
+				    struct d3dkmt_opensyncobjectfromnthandle2
+				    *args,
+				    struct dxgsyncobject *syncobj);
 int dxgvmb_send_create_nt_shared_object(struct dxgprocess *process,
 					struct d3dkmthandle object,
 					struct d3dkmthandle *shared_handle);

@@ -172,6 +172,21 @@ struct dxgkvmb_command_signalguestevent {
 	bool				dereference_event;
 };
 
+struct dxgkvmb_command_opensyncobject {
+	struct dxgkvmb_command_vm_to_host hdr;
+	struct d3dkmthandle		device;
+	struct d3dkmthandle		global_sync_object;
+	u32				engine_affinity;
+	struct d3dddi_synchronizationobject_flags flags;
+};
+
+struct dxgkvmb_command_opensyncobject_return {
+	struct d3dkmthandle		sync_object;
+	struct ntstatus			status;
+	u64				gpu_virtual_address;
+	u64				guest_cpu_physical_address;
+};
+
 /*
  * The command returns struct d3dkmthandle of a shared object for the
  * given pre-process object
