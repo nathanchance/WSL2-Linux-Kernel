@@ -235,4 +235,16 @@ struct dxgkvmb_command_getinternaladapterinfo_return {
 	struct winluid			host_vgpu_luid;
 };
 
+struct dxgkvmb_command_queryadapterinfo {
+	struct dxgkvmb_command_vgpu_to_host hdr;
+	enum kmtqueryadapterinfotype	query_type;
+	u32				private_data_size;
+	u8				private_data[1];
+};
+
+struct dxgkvmb_command_queryadapterinfo_return {
+	struct ntstatus			status;
+	u8				private_data[1];
+};
+
 #endif /* _DXGVMBUS_H */

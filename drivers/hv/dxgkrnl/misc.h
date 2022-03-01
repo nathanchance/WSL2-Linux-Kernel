@@ -31,6 +31,7 @@ extern const struct d3dkmthandle zerohandle;
  * table_lock
  * core_lock
  * device_lock
+ * process_adapter_mutex
  * adapter_list_lock
  * device_mutex
  */

@@ -47,6 +47,7 @@ struct dxgprocess *dxgprocess_create(void)
 
 			hmgrtable_init(&process->handle_table, process);
 			hmgrtable_init(&process->local_handle_table, process);
+			INIT_LIST_HEAD(&process->process_adapter_list_head);
 		}
 	}
 	return process;
@@ -54,6 +55,35 @@ struct dxgprocess *dxgprocess_create(void)
 
 void dxgprocess_destroy(struct dxgprocess *process)
 {
+	int i;
+	enum hmgrentry_type t;
+	struct d3dkmthandle h;
+	void *o;
+	struct dxgprocess_adapter *entry;
+	struct dxgprocess_adapter *tmp;
+
+	/* Destroy all adapter state */
+	dxgglobal_acquire_process_adapter_lock();
+	list_for_each_entry_safe(entry, tmp,
+				 &process->process_adapter_list_head,
+				 process_adapter_list_entry) {
+		dxgprocess_adapter_destroy(entry);
+	}
+	dxgglobal_release_process_adapter_lock();
+
+	i = 0;
+	while (hmgrtable_next_entry(&process->local_handle_table,
+				    &i, &t, &h, &o)) {
+		switch (t) {
+		case HMGRENTRY_TYPE_DXGADAPTER:
+			dxgprocess_close_adapter(process, h);
+			break;
+		default:
+			pr_err("invalid entry in local handle table %d", t);
+			break;
+		}
+	}
+
 	hmgrtable_destroy(&process->handle_table);
 	hmgrtable_destroy(&process->local_handle_table);
 }
@@ -74,6 +104,142 @@ void dxgprocess_release(struct kref *refcount)
 	if (process->host_handle.v)
 		dxgvmb_send_destroy_process(process->host_handle);
 	vfree(process);
+}
+
+struct dxgprocess_adapter *dxgprocess_get_adapter_info(struct dxgprocess
+						       *process,
+						       struct dxgadapter
+						       *adapter)
+{
+	struct dxgprocess_adapter *entry;
+
+	list_for_each_entry(entry, &process->process_adapter_list_head,
+			    process_adapter_list_entry) {
+		if (adapter == entry->adapter) {
+			pr_debug("Found process info %p", entry);
+			return entry;
+		}
+	}
+	return NULL;
+}
+
+/*
+ * Dxgprocess takes references on dxgadapter and dxgprocess_adapter.
+ */
+int dxgprocess_open_adapter(struct dxgprocess *process,
+					struct dxgadapter *adapter,
+					struct d3dkmthandle *h)
+{
+	int ret = 0;
+	struct dxgprocess_adapter *adapter_info;
+	struct d3dkmthandle handle;
+
+	h->v = 0;
+	adapter_info = dxgprocess_get_adapter_info(process, adapter);
+	if (adapter_info == NULL) {
+		pr_debug("creating new process adapter info\n");
+		adapter_info = dxgprocess_adapter_create(process, adapter);
+		if (adapter_info == NULL) {
+			ret = -ENOMEM;
+			goto cleanup;
+		}
+	} else {
+		adapter_info->refcount++;
+	}
+
+	handle = hmgrtable_alloc_handle_safe(&process->local_handle_table,
+					     adapter, HMGRENTRY_TYPE_DXGADAPTER,
+					     true);
+	if (handle.v) {
+		*h = handle;
+	} else {
+		pr_err("failed to create adapter handle\n");
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+cleanup:
+
+	if (ret < 0) {
+		if (adapter_info) {
+			dxgglobal_acquire_process_adapter_lock();
+			dxgprocess_adapter_release(adapter_info);
+			dxgglobal_release_process_adapter_lock();
+		}
+	}
+
+	return ret;
+}
+
+int dxgprocess_close_adapter(struct dxgprocess *process,
+			     struct d3dkmthandle handle)
+{
+	struct dxgadapter *adapter;
+	struct dxgprocess_adapter *adapter_info;
+	int ret = 0;
+
+	if (handle.v == 0)
+		return 0;
+
+	hmgrtable_lock(&process->local_handle_table, DXGLOCK_EXCL);
+	adapter = dxgprocess_get_adapter(process, handle);
+	if (adapter)
+		hmgrtable_free_handle(&process->local_handle_table,
+				      HMGRENTRY_TYPE_DXGADAPTER, handle);
+	hmgrtable_unlock(&process->local_handle_table, DXGLOCK_EXCL);
+
+	if (adapter) {
+		adapter_info = dxgprocess_get_adapter_info(process, adapter);
+		if (adapter_info) {
+			dxgglobal_acquire_process_adapter_lock();
+			dxgprocess_adapter_release(adapter_info);
+			dxgglobal_release_process_adapter_lock();
+		} else {
+			ret = -EINVAL;
+		}
+	} else {
+		pr_err("%s failed %x", __func__, handle.v);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+struct dxgadapter *dxgprocess_get_adapter(struct dxgprocess *process,
+					  struct d3dkmthandle handle)
+{
+	struct dxgadapter *adapter;
+
+	adapter = hmgrtable_get_object_by_type(&process->local_handle_table,
+					       HMGRENTRY_TYPE_DXGADAPTER,
+					       handle);
+	if (adapter == NULL)
+		pr_err("%s failed %x\n", __func__, handle.v);
+	return adapter;
+}
+
+/*
+ * Gets the adapter object from the process handle table.
+ * The adapter object is referenced.
+ * The function acquired the handle table lock shared.
+ */
+struct dxgadapter *dxgprocess_adapter_by_handle(struct dxgprocess *process,
+						struct d3dkmthandle handle)
+{
+	struct dxgadapter *adapter;
+
+	hmgrtable_lock(&process->local_handle_table, DXGLOCK_SHARED);
+	adapter = hmgrtable_get_object_by_type(&process->local_handle_table,
+					       HMGRENTRY_TYPE_DXGADAPTER,
+					       handle);
+	if (adapter == NULL)
+		pr_err("adapter_by_handle failed %x\n", handle.v);
+	else if (kref_get_unless_zero(&adapter->adapter_kref) == 0) {
+		pr_err("failed to acquire adapter reference\n");
+		adapter = NULL;
+	}
+	hmgrtable_unlock(&process->local_handle_table, DXGLOCK_SHARED);
+	return adapter;
 }
 
 void dxgprocess_ht_lock_shared_down(struct dxgprocess *process)

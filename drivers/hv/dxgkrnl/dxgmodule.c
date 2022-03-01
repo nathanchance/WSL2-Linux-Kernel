@@ -124,6 +124,16 @@ static struct dxgadapter *find_adapter(struct winluid *luid)
 	return adapter;
 }
 
+void dxgglobal_acquire_process_adapter_lock(void)
+{
+	mutex_lock(&dxgglobal->process_adapter_mutex);
+}
+
+void dxgglobal_release_process_adapter_lock(void)
+{
+	mutex_unlock(&dxgglobal->process_adapter_mutex);
+}
+
 /*
  * Creates a new dxgadapter object, which represents a virtual GPU, projected
  * by the host.
@@ -147,6 +157,7 @@ int dxgglobal_create_adapter(struct pci_dev *dev, guid_t *guid,
 	kref_init(&adapter->adapter_kref);
 	init_rwsem(&adapter->core_lock);
 
+	INIT_LIST_HEAD(&adapter->adapter_process_list_head);
 	adapter->pci_dev = dev;
 	guid_to_luid(guid, &adapter->luid);
 
@@ -721,6 +732,7 @@ static int dxgglobal_create(void)
 	INIT_LIST_HEAD(&dxgglobal->plisthead);
 	mutex_init(&dxgglobal->plistmutex);
 	mutex_init(&dxgglobal->device_mutex);
+	mutex_init(&dxgglobal->process_adapter_mutex);
 
 	INIT_LIST_HEAD(&dxgglobal->thread_info_list_head);
 	mutex_init(&dxgglobal->thread_info_mutex);

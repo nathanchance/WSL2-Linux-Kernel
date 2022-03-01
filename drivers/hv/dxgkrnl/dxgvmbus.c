@@ -666,3 +666,85 @@ int dxgvmb_send_get_internal_adapter_info(struct dxgadapter *adapter)
 		pr_debug("err: %s %d", __func__, ret);
 	return ret;
 }
+
+int dxgvmb_send_query_adapter_info(struct dxgprocess *process,
+				   struct dxgadapter *adapter,
+				   struct d3dkmt_queryadapterinfo *args)
+{
+	struct dxgkvmb_command_queryadapterinfo *command;
+	u32 cmd_size = sizeof(*command) + args->private_data_size - 1;
+	int ret;
+	u32 private_data_size;
+	void *private_data;
+	struct dxgvmbusmsg msg = {.hdr = NULL};
+
+	ret = init_message(&msg, adapter, process, cmd_size);
+	if (ret)
+		goto cleanup;
+	command = (void *)msg.msg;
+
+	ret = copy_from_user(command->private_data,
+			     args->private_data, args->private_data_size);
+	if (ret) {
+		pr_err("%s Faled to copy private data", __func__);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	command_vgpu_to_host_init2(&command->hdr,
+				   DXGK_VMBCOMMAND_QUERYADAPTERINFO,
+				   process->host_handle);
+	command->private_data_size = args->private_data_size;
+	command->query_type = args->type;
+
+	if (dxgglobal->vmbus_ver >= DXGK_VMBUS_INTERFACE_VERSION) {
+		private_data = msg.msg;
+		private_data_size = command->private_data_size +
+				    sizeof(struct ntstatus);
+	} else {
+		private_data = command->private_data;
+		private_data_size = command->private_data_size;
+	}
+
+	ret = dxgvmb_send_sync_msg(msg.channel, msg.hdr, msg.size,
+				   private_data, private_data_size);
+	if (ret < 0)
+		goto cleanup;
+
+	if (dxgglobal->vmbus_ver >= DXGK_VMBUS_INTERFACE_VERSION) {
+		ret = ntstatus2int(*(struct ntstatus *)private_data);
+		if (ret < 0)
+			goto cleanup;
+		private_data = (char *)private_data + sizeof(struct ntstatus);
+	}
+
+	switch (args->type) {
+	case _KMTQAITYPE_ADAPTERTYPE:
+	case _KMTQAITYPE_ADAPTERTYPE_RENDER:
+		{
+			struct d3dkmt_adaptertype *adapter_type =
+			    (void *)private_data;
+			adapter_type->paravirtualized = 1;
+			adapter_type->display_supported = 0;
+			adapter_type->post_device = 0;
+			adapter_type->indirect_display_device = 0;
+			adapter_type->acg_supported = 0;
+			adapter_type->support_set_timings_from_vidpn = 0;
+			break;
+		}
+	default:
+		break;
+	}
+	ret = copy_to_user(args->private_data, private_data,
+			   args->private_data_size);
+	if (ret) {
+		pr_err("%s Faled to copy private data to user", __func__);
+		ret = -EINVAL;
+	}
+
+cleanup:
+	free_message(&msg, process);
+	if (ret)
+		pr_debug("err: %s %d", __func__, ret);
+	return ret;
+}
