@@ -3587,6 +3587,54 @@ cleanup:
 }
 
 static int
+dxgk_query_vidmem_info(struct dxgprocess *process, void *__user inargs)
+{
+	struct d3dkmt_queryvideomemoryinfo args;
+	int ret;
+	struct dxgadapter *adapter = NULL;
+	bool adapter_locked = false;
+
+	ret = copy_from_user(&args, inargs, sizeof(args));
+	if (ret) {
+		pr_err("%s failed to copy input args", __func__);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	if (args.process != 0) {
+		pr_err("query vidmem info from another process ");
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	adapter = dxgprocess_adapter_by_handle(process, args.adapter);
+	if (adapter == NULL) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	ret = dxgadapter_acquire_lock_shared(adapter);
+	if (ret < 0) {
+		adapter = NULL;
+		goto cleanup;
+	}
+	adapter_locked = true;
+
+	args.adapter = adapter->host_handle;
+	ret = dxgvmb_send_query_vidmem_info(process, adapter, &args, inargs);
+
+cleanup:
+
+	if (adapter_locked)
+		dxgadapter_release_lock_shared(adapter);
+	if (adapter)
+		kref_put(&adapter->adapter_kref, dxgadapter_release);
+	if (ret < 0)
+		pr_err("%s failed: %x", __func__, ret);
+	return ret;
+}
+
+static int
 dxgk_get_device_state(struct dxgprocess *process, void *__user inargs)
 {
 	int ret;
@@ -4391,6 +4439,8 @@ void init_ioctls(void)
 		  LX_DXCREATEPAGINGQUEUE);
 	SET_IOCTL(/*0x9 */ dxgk_query_adapter_info,
 		  LX_DXQUERYADAPTERINFO);
+	SET_IOCTL(/*0xa */ dxgk_query_vidmem_info,
+		  LX_DXQUERYVIDEOMEMORYINFO);
 	SET_IOCTL(/*0xe */ dxgk_get_device_state,
 		  LX_DXGETDEVICESTATE);
 	SET_IOCTL(/*0xf */ dxgk_submit_command,
