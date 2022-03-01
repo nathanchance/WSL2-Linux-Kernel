@@ -153,6 +153,66 @@ cleanup:
 	return ret;
 }
 
+static int dxgk_query_statistics(struct dxgprocess *process,
+				 void __user *inargs)
+{
+	struct d3dkmt_querystatistics *args;
+	int ret;
+	struct dxgadapter *entry;
+	struct dxgadapter *adapter = NULL;
+	struct winluid tmp;
+
+	pr_debug("ioctl: %s", __func__);
+
+	args = vzalloc(sizeof(struct d3dkmt_querystatistics));
+	if (args == NULL) {
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+	ret = copy_from_user(args, inargs, sizeof(*args));
+	if (ret) {
+		pr_err("%s failed to copy input args", __func__);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	dxgglobal_acquire_adapter_list_lock(DXGLOCK_SHARED);
+	list_for_each_entry(entry, &dxgglobal->adapter_list_head,
+			    adapter_list_entry) {
+		if (dxgadapter_acquire_lock_shared(entry) == 0) {
+			if (*(u64 *) &entry->luid ==
+			    *(u64 *) &args->adapter_luid) {
+				adapter = entry;
+				break;
+			}
+			dxgadapter_release_lock_shared(entry);
+		}
+	}
+	dxgglobal_release_adapter_list_lock(DXGLOCK_SHARED);
+	if (adapter) {
+		tmp = args->adapter_luid;
+		args->adapter_luid = adapter->host_adapter_luid;
+		ret = dxgvmb_send_query_statistics(process, adapter, args);
+		if (ret >= 0) {
+			args->adapter_luid = tmp;
+			ret = copy_to_user(inargs, args, sizeof(*args));
+			if (ret) {
+				pr_err("%s failed to copy args", __func__);
+				ret = -EINVAL;
+			}
+		}
+		dxgadapter_release_lock_shared(adapter);
+	}
+
+cleanup:
+	if (args)
+		vfree(args);
+
+	pr_debug("ioctl:%s %s %d", errorstr(ret), __func__, ret);
+	return ret;
+}
+
 static int
 dxgkp_enum_adapters(struct dxgprocess *process,
 		    union d3dkmt_enumadapters_filter filter,
@@ -3577,6 +3637,54 @@ cleanup:
 }
 
 static int
+dxgk_query_clock_calibration(struct dxgprocess *process, void *__user inargs)
+{
+	struct d3dkmt_queryclockcalibration args;
+	int ret;
+	struct dxgadapter *adapter = NULL;
+	bool adapter_locked = false;
+
+	ret = copy_from_user(&args, inargs, sizeof(args));
+	if (ret) {
+		pr_err("%s failed to copy input args", __func__);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	adapter = dxgprocess_adapter_by_handle(process, args.adapter);
+	if (adapter == NULL) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	ret = dxgadapter_acquire_lock_shared(adapter);
+	if (ret < 0) {
+		adapter = NULL;
+		goto cleanup;
+	}
+	adapter_locked = true;
+
+	args.adapter = adapter->host_handle;
+	ret = dxgvmb_send_query_clock_calibration(process, adapter,
+						  &args, inargs);
+	if (ret < 0)
+		goto cleanup;
+	ret = copy_to_user(inargs, &args, sizeof(args));
+	if (ret) {
+		pr_err("%s failed to copy output args", __func__);
+		ret = -EINVAL;
+	}
+
+cleanup:
+
+	if (adapter_locked)
+		dxgadapter_release_lock_shared(adapter);
+	if (adapter)
+		kref_put(&adapter->adapter_kref, dxgadapter_release);
+	return ret;
+}
+
+static int
 dxgk_flush_heap_transitions(struct dxgprocess *process, void *__user inargs)
 {
 	struct d3dkmt_flushheaptransitions args;
@@ -4580,6 +4688,8 @@ void init_ioctls(void)
 		  LX_DXWAITFORSYNCHRONIZATIONOBJECTFROMGPU);
 	SET_IOCTL(/*0x3c */ dxgk_get_allocation_priority,
 		  LX_DXGETALLOCATIONPRIORITY);
+	SET_IOCTL(/*0x3d */ dxgk_query_clock_calibration,
+		  LX_DXQUERYCLOCKCALIBRATION);
 	SET_IOCTL(/*0x3e */ dxgk_enum_adapters3,
 		  LX_DXENUMADAPTERS3);
 	SET_IOCTL(/*0x3f */ dxgk_share_objects,
@@ -4590,6 +4700,8 @@ void init_ioctls(void)
 		  LX_DXQUERYRESOURCEINFOFROMNTHANDLE);
 	SET_IOCTL(/*0x42 */ dxgk_open_resource_nt,
 		  LX_DXOPENRESOURCEFROMNTHANDLE);
+	SET_IOCTL(/*0x43 */ dxgk_query_statistics,
+		  LX_DXQUERYSTATISTICS);
 	SET_IOCTL(/*0x44 */ dxgk_share_object_with_host,
 		  LX_DXSHAREOBJECTWITHHOST);
 }
