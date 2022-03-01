@@ -490,6 +490,86 @@ dxgvmb_send_sync_msg_ntstatus(struct dxgvmbuschannel *channel,
 	return ret;
 }
 
+static int check_iospace_address(unsigned long address, u32 size)
+{
+	if (address < dxgglobal->mmiospace_base ||
+	    size > dxgglobal->mmiospace_size ||
+	    address >= (dxgglobal->mmiospace_base +
+			dxgglobal->mmiospace_size - size)) {
+		pr_err("invalid iospace address %lx", address);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int dxg_unmap_iospace(void *va, u32 size)
+{
+	int ret = 0;
+
+	pr_debug("%s %p %x", __func__, va, size);
+
+	/*
+	 * When an app calls exit(), dxgkrnl is called to close the device
+	 * with current->mm equal to NULL.
+	 */
+	if (current->mm) {
+		ret = vm_munmap((unsigned long)va, size);
+		if (ret) {
+			pr_err("vm_munmap failed %d", ret);
+			return -ENOTRECOVERABLE;
+		}
+	}
+	return 0;
+}
+
+static u8 *dxg_map_iospace(u64 iospace_address, u32 size,
+			   unsigned long protection, bool cached)
+{
+	struct vm_area_struct *vma;
+	unsigned long va;
+	int ret = 0;
+
+	pr_debug("%s: %llx %x %lx",
+		    __func__, iospace_address, size, protection);
+	if (check_iospace_address(iospace_address, size) < 0) {
+		pr_err("%s: invalid address", __func__);
+		return NULL;
+	}
+
+	va = vm_mmap(NULL, 0, size, protection, MAP_SHARED | MAP_ANONYMOUS, 0);
+	if ((long)va <= 0) {
+		pr_err("vm_mmap failed %lx %d", va, size);
+		return NULL;
+	}
+
+	mmap_read_lock(current->mm);
+	vma = find_vma(current->mm, (unsigned long)va);
+	if (vma) {
+		pgprot_t prot = vma->vm_page_prot;
+
+		if (!cached)
+			prot = pgprot_writecombine(prot);
+		pr_debug("vma: %lx %lx %lx",
+			    vma->vm_start, vma->vm_end, va);
+		vma->vm_pgoff = iospace_address >> PAGE_SHIFT;
+		ret = io_remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff,
+					 size, prot);
+		if (ret)
+			pr_err("io_remap_pfn_range failed: %d", ret);
+	} else {
+		pr_err("failed to find vma: %p %lx", vma, va);
+		ret = -ENOMEM;
+	}
+	mmap_read_unlock(current->mm);
+
+	if (ret) {
+		dxg_unmap_iospace((void *)va, size);
+		return NULL;
+	}
+	pr_debug("%s end: %lx", __func__, va);
+	return (u8 *) va;
+}
+
 /*
  * Global messages to the host
  */
@@ -603,6 +683,39 @@ int dxgvmb_send_destroy_process(struct d3dkmthandle process)
 
 cleanup:
 	free_message(&msg, NULL);
+	if (ret)
+		pr_debug("err: %s %d", __func__, ret);
+	return ret;
+}
+
+int dxgvmb_send_destroy_sync_object(struct dxgprocess *process,
+				    struct d3dkmthandle sync_object)
+{
+	struct dxgkvmb_command_destroysyncobject *command;
+	int ret;
+	struct dxgvmbusmsg msg = {.hdr = NULL};
+
+	ret = init_message(&msg, NULL, process, sizeof(*command));
+	if (ret)
+		return ret;
+	command = (void *)msg.msg;
+
+	ret = dxgglobal_acquire_channel_lock();
+	if (ret < 0)
+		goto cleanup;
+
+	command_vm_to_host_init2(&command->hdr,
+				 DXGK_VMBCOMMAND_DESTROYSYNCOBJECT,
+				 process->host_handle);
+	command->sync_object = sync_object;
+
+	ret = dxgvmb_send_sync_msg_ntstatus(dxgglobal_get_dxgvmbuschannel(),
+					    msg.hdr, msg.size);
+
+	dxgglobal_release_channel_lock();
+
+cleanup:
+	free_message(&msg, process);
 	if (ret)
 		pr_debug("err: %s %d", __func__, ret);
 	return ret;
@@ -1487,6 +1600,92 @@ int dxgvmb_send_get_stdalloc_data(struct dxgdevice *device,
 cleanup:
 
 	free_message((struct dxgvmbusmsg *)&msg, device->process);
+	if (ret)
+		pr_debug("err: %s %d", __func__, ret);
+	return ret;
+}
+
+static void set_result(struct d3dkmt_createsynchronizationobject2 *args,
+		       u64 fence_gpu_va, u8 *va)
+{
+	args->info.periodic_monitored_fence.fence_gpu_virtual_address =
+	    fence_gpu_va;
+	args->info.periodic_monitored_fence.fence_cpu_virtual_address = va;
+}
+
+int
+dxgvmb_send_create_sync_object(struct dxgprocess *process,
+			       struct dxgadapter *adapter,
+			       struct d3dkmt_createsynchronizationobject2 *args,
+			       struct dxgsyncobject *syncobj)
+{
+	struct dxgkvmb_command_createsyncobject_return result = { };
+	struct dxgkvmb_command_createsyncobject *command;
+	int ret;
+	u8 *va = 0;
+	struct dxgvmbusmsg msg = {.hdr = NULL};
+
+	ret = init_message(&msg, adapter, process, sizeof(*command));
+	if (ret)
+		goto cleanup;
+	command = (void *)msg.msg;
+
+	command_vgpu_to_host_init2(&command->hdr,
+				   DXGK_VMBCOMMAND_CREATESYNCOBJECT,
+				   process->host_handle);
+	command->args = *args;
+	command->client_hint = 1;	/* CLIENTHINT_UMD */
+
+	ret = dxgvmb_send_sync_msg(msg.channel, msg.hdr, msg.size, &result,
+				   sizeof(result));
+	if (ret < 0) {
+		pr_err("%s failed %d", __func__, ret);
+		goto cleanup;
+	}
+	args->sync_object = result.sync_object;
+	if (syncobj->shared) {
+		if (result.global_sync_object.v == 0) {
+			pr_err("shared handle is 0");
+			ret = -EINVAL;
+			goto cleanup;
+		}
+		args->info.shared_handle = result.global_sync_object;
+	}
+
+	if (syncobj->monitored_fence) {
+		va = dxg_map_iospace(result.fence_storage_address, PAGE_SIZE,
+				     PROT_READ | PROT_WRITE, true);
+		if (va == NULL) {
+			ret = -ENOMEM;
+			goto cleanup;
+		}
+		if (args->info.type == _D3DDDI_MONITORED_FENCE) {
+			args->info.monitored_fence.fence_gpu_virtual_address =
+			    result.fence_gpu_va;
+			args->info.monitored_fence.fence_cpu_virtual_address =
+			    va;
+			{
+				unsigned long value;
+
+				pr_debug("fence cpu va: %p", va);
+				ret = copy_from_user(&value, va,
+						     sizeof(u64));
+				if (ret) {
+					pr_err("failed to read fence");
+					ret = -EINVAL;
+				} else {
+					pr_debug("fence value:%lx",
+						value);
+				}
+			}
+		} else {
+			set_result(args, result.fence_gpu_va, va);
+		}
+		syncobj->mapped_address = va;
+	}
+
+cleanup:
+	free_message(&msg, process);
 	if (ret)
 		pr_debug("err: %s %d", __func__, ret);
 	return ret;
