@@ -3181,6 +3181,163 @@ cleanup:
 }
 
 static int
+dxgk_lock2(struct dxgprocess *process, void *__user inargs)
+{
+	struct d3dkmt_lock2 args;
+	struct d3dkmt_lock2 *__user result = inargs;
+	int ret;
+	struct dxgadapter *adapter = NULL;
+	struct dxgdevice *device = NULL;
+	struct dxgallocation *alloc = NULL;
+
+	ret = copy_from_user(&args, inargs, sizeof(args));
+	if (ret) {
+		pr_err("%s failed to copy input args", __func__);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	args.data = NULL;
+	hmgrtable_lock(&process->handle_table, DXGLOCK_EXCL);
+	alloc = hmgrtable_get_object_by_type(&process->handle_table,
+					     HMGRENTRY_TYPE_DXGALLOCATION,
+					     args.allocation);
+	if (alloc == NULL) {
+		ret = -EINVAL;
+	} else {
+		if (alloc->cpu_address) {
+			ret = copy_to_user(&result->data,
+					   &alloc->cpu_address,
+					   sizeof(args.data));
+			if (ret == 0) {
+				args.data = alloc->cpu_address;
+				if (alloc->cpu_address_mapped)
+					alloc->cpu_address_refcount++;
+			} else {
+				pr_err("%s Failed to copy cpu address",
+					__func__);
+				ret = -EINVAL;
+			}
+		}
+	}
+	hmgrtable_unlock(&process->handle_table, DXGLOCK_EXCL);
+	if (ret < 0)
+		goto cleanup;
+	if (args.data)
+		goto success;
+
+	/*
+	 * The call acquires reference on the device. It is safe to access the
+	 * adapter, because the device holds reference on it.
+	 */
+	device = dxgprocess_device_by_handle(process, args.device);
+	if (device == NULL) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+	adapter = device->adapter;
+	ret = dxgadapter_acquire_lock_shared(adapter);
+	if (ret < 0) {
+		adapter = NULL;
+		goto cleanup;
+	}
+
+	ret = dxgvmb_send_lock2(process, adapter, &args, result);
+
+cleanup:
+
+	if (adapter)
+		dxgadapter_release_lock_shared(adapter);
+
+	if (device)
+		kref_put(&device->device_kref, dxgdevice_release);
+
+success:
+	pr_debug("ioctl:%s %s %d", errorstr(ret), __func__, ret);
+	return ret;
+}
+
+static int
+dxgk_unlock2(struct dxgprocess *process, void *__user inargs)
+{
+	struct d3dkmt_unlock2 args;
+	int ret;
+	struct dxgadapter *adapter = NULL;
+	struct dxgdevice *device = NULL;
+	struct dxgallocation *alloc = NULL;
+	bool done = false;
+
+	ret = copy_from_user(&args, inargs, sizeof(args));
+	if (ret) {
+		pr_err("%s failed to copy input args", __func__);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	hmgrtable_lock(&process->handle_table, DXGLOCK_EXCL);
+	alloc = hmgrtable_get_object_by_type(&process->handle_table,
+					     HMGRENTRY_TYPE_DXGALLOCATION,
+					     args.allocation);
+	if (alloc == NULL) {
+		ret = -EINVAL;
+	} else {
+		if (alloc->cpu_address == NULL) {
+			pr_err("Allocation is not locked: %p", alloc);
+			ret = -EINVAL;
+		} else if (alloc->cpu_address_mapped) {
+			if (alloc->cpu_address_refcount > 0) {
+				alloc->cpu_address_refcount--;
+				if (alloc->cpu_address_refcount != 0) {
+					done = true;
+				} else {
+					dxg_unmap_iospace(alloc->cpu_address,
+						alloc->num_pages << PAGE_SHIFT);
+					alloc->cpu_address_mapped = false;
+					alloc->cpu_address = NULL;
+				}
+			} else {
+				pr_err("Invalid cpu access refcount");
+				done = true;
+			}
+		}
+	}
+	hmgrtable_unlock(&process->handle_table, DXGLOCK_EXCL);
+	if (done)
+		goto success;
+	if (ret < 0)
+		goto cleanup;
+
+	/*
+	 * The call acquires reference on the device. It is safe to access the
+	 * adapter, because the device holds reference on it.
+	 */
+	device = dxgprocess_device_by_handle(process, args.device);
+	if (device == NULL) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
+	adapter = device->adapter;
+	ret = dxgadapter_acquire_lock_shared(adapter);
+	if (ret < 0) {
+		adapter = NULL;
+		goto cleanup;
+	}
+
+	ret = dxgvmb_send_unlock2(process, adapter, &args);
+
+cleanup:
+	if (adapter)
+		dxgadapter_release_lock_shared(adapter);
+
+	if (device)
+		kref_put(&device->device_kref, dxgdevice_release);
+
+success:
+	pr_debug("ioctl:%s %s %d", errorstr(ret), __func__, ret);
+	return ret;
+}
+
+static int
 dxgk_get_device_state(struct dxgprocess *process, void *__user inargs)
 {
 	int ret;
@@ -4011,6 +4168,8 @@ void init_ioctls(void)
 		  LX_DXDESTROYPAGINGQUEUE);
 	SET_IOCTL(/*0x1d */ dxgk_destroy_sync_object,
 		  LX_DXDESTROYSYNCHRONIZATIONOBJECT);
+	SET_IOCTL(/*0x25 */ dxgk_lock2,
+		  LX_DXLOCK2);
 	SET_IOCTL(/*0x31 */ dxgk_signal_sync_object_cpu,
 		  LX_DXSIGNALSYNCHRONIZATIONOBJECTFROMCPU);
 	SET_IOCTL(/*0x32 */ dxgk_signal_sync_object_gpu,
@@ -4023,6 +4182,8 @@ void init_ioctls(void)
 		  LX_DXSUBMITWAITFORSYNCOBJECTSTOHWQUEUE);
 	SET_IOCTL(/*0x36 */ dxgk_submit_signal_to_hwqueue,
 		  LX_DXSUBMITSIGNALSYNCOBJECTSTOHWQUEUE);
+	SET_IOCTL(/*0x37 */ dxgk_unlock2,
+		  LX_DXUNLOCK2);
 	SET_IOCTL(/*0x3a */ dxgk_wait_sync_object_cpu,
 		  LX_DXWAITFORSYNCHRONIZATIONOBJECTFROMCPU);
 	SET_IOCTL(/*0x3b */ dxgk_wait_sync_object_gpu,
