@@ -199,6 +199,121 @@ void dxgadapter_release_lock_shared(struct dxgadapter *adapter)
 	up_read(&adapter->core_lock);
 }
 
+struct dxgdevice *dxgdevice_create(struct dxgadapter *adapter,
+				   struct dxgprocess *process)
+{
+	struct dxgdevice *device = vzalloc(sizeof(struct dxgdevice));
+	int ret;
+
+	if (device) {
+		kref_init(&device->device_kref);
+		device->adapter = adapter;
+		device->process = process;
+		kref_get(&adapter->adapter_kref);
+		init_rwsem(&device->device_lock);
+		INIT_LIST_HEAD(&device->pqueue_list_head);
+		device->object_state = DXGOBJECTSTATE_CREATED;
+		device->execution_state = _D3DKMT_DEVICEEXECUTION_ACTIVE;
+
+		ret = dxgprocess_adapter_add_device(process, adapter, device);
+		if (ret < 0) {
+			kref_put(&device->device_kref, dxgdevice_release);
+			device = NULL;
+		}
+	}
+	return device;
+}
+
+void dxgdevice_stop(struct dxgdevice *device)
+{
+}
+
+void dxgdevice_mark_destroyed(struct dxgdevice *device)
+{
+	down_write(&device->device_lock);
+	device->object_state = DXGOBJECTSTATE_DESTROYED;
+	up_write(&device->device_lock);
+}
+
+void dxgdevice_destroy(struct dxgdevice *device)
+{
+	struct dxgprocess *process = device->process;
+	struct dxgadapter *adapter = device->adapter;
+	struct d3dkmthandle device_handle = {};
+
+	pr_debug("%s: %p\n", __func__, device);
+
+	down_write(&device->device_lock);
+
+	if (device->object_state != DXGOBJECTSTATE_ACTIVE)
+		goto cleanup;
+
+	device->object_state = DXGOBJECTSTATE_DESTROYED;
+
+	dxgdevice_stop(device);
+
+	/* Guest handles need to be released before the host handles */
+	hmgrtable_lock(&process->handle_table, DXGLOCK_EXCL);
+	if (device->handle_valid) {
+		hmgrtable_free_handle(&process->handle_table,
+				      HMGRENTRY_TYPE_DXGDEVICE, device->handle);
+		device_handle = device->handle;
+		device->handle_valid = 0;
+	}
+	hmgrtable_unlock(&process->handle_table, DXGLOCK_EXCL);
+
+	if (device_handle.v) {
+		up_write(&device->device_lock);
+		if (dxgadapter_acquire_lock_shared(adapter) == 0) {
+			dxgvmb_send_destroy_device(adapter, process,
+						   device_handle);
+			dxgadapter_release_lock_shared(adapter);
+		}
+		down_write(&device->device_lock);
+	}
+
+cleanup:
+
+	if (device->adapter) {
+		dxgprocess_adapter_remove_device(device);
+		kref_put(&device->adapter->adapter_kref, dxgadapter_release);
+		device->adapter = NULL;
+	}
+
+	up_write(&device->device_lock);
+
+	kref_put(&device->device_kref, dxgdevice_release);
+	pr_debug("dxgdevice_destroy_end\n");
+}
+
+int dxgdevice_acquire_lock_shared(struct dxgdevice *device)
+{
+	down_read(&device->device_lock);
+	if (!dxgdevice_is_active(device)) {
+		up_read(&device->device_lock);
+		return -ENODEV;
+	}
+	return 0;
+}
+
+void dxgdevice_release_lock_shared(struct dxgdevice *device)
+{
+	up_read(&device->device_lock);
+}
+
+bool dxgdevice_is_active(struct dxgdevice *device)
+{
+	return device->object_state == DXGOBJECTSTATE_ACTIVE;
+}
+
+void dxgdevice_release(struct kref *refcount)
+{
+	struct dxgdevice *device;
+
+	device = container_of(refcount, struct dxgdevice, device_kref);
+	vfree(device);
+}
+
 struct dxgprocess_adapter *dxgprocess_adapter_create(struct dxgprocess *process,
 						     struct dxgadapter *adapter)
 {
@@ -213,6 +328,8 @@ struct dxgprocess_adapter *dxgprocess_adapter_create(struct dxgprocess *process,
 		adapter_info->adapter = adapter;
 		adapter_info->process = process;
 		adapter_info->refcount = 1;
+		mutex_init(&adapter_info->device_list_mutex);
+		INIT_LIST_HEAD(&adapter_info->device_list_head);
 		list_add_tail(&adapter_info->process_adapter_list_entry,
 			      &process->process_adapter_list_head);
 		dxgadapter_add_process(adapter, adapter_info);
@@ -226,10 +343,35 @@ cleanup:
 
 void dxgprocess_adapter_stop(struct dxgprocess_adapter *adapter_info)
 {
+	struct dxgdevice *device;
+
+	mutex_lock(&adapter_info->device_list_mutex);
+	list_for_each_entry(device, &adapter_info->device_list_head,
+			    device_list_entry) {
+		dxgdevice_stop(device);
+	}
+	mutex_unlock(&adapter_info->device_list_mutex);
 }
 
 void dxgprocess_adapter_destroy(struct dxgprocess_adapter *adapter_info)
 {
+	struct dxgdevice *device;
+
+	mutex_lock(&adapter_info->device_list_mutex);
+	while (!list_empty(&adapter_info->device_list_head)) {
+		device = list_first_entry(&adapter_info->device_list_head,
+					  struct dxgdevice, device_list_entry);
+		list_del(&device->device_list_entry);
+		device->device_list_entry.next = NULL;
+		mutex_unlock(&adapter_info->device_list_mutex);
+		dxgvmb_send_flush_device(device,
+			DXGDEVICE_FLUSHSCHEDULER_DEVICE_TERMINATE);
+		dxgdevice_destroy(device);
+		dxgdevice_destroy(device);
+		mutex_lock(&adapter_info->device_list_mutex);
+	}
+	mutex_unlock(&adapter_info->device_list_mutex);
+
 	dxgadapter_remove_process(adapter_info);
 	kref_put(&adapter_info->adapter->adapter_kref, dxgadapter_release);
 	list_del(&adapter_info->process_adapter_list_entry);
@@ -246,4 +388,49 @@ void dxgprocess_adapter_release(struct dxgprocess_adapter *adapter_info)
 	adapter_info->refcount--;
 	if (adapter_info->refcount == 0)
 		dxgprocess_adapter_destroy(adapter_info);
+}
+
+int dxgprocess_adapter_add_device(struct dxgprocess *process,
+				  struct dxgadapter *adapter,
+				  struct dxgdevice *device)
+{
+	struct dxgprocess_adapter *entry;
+	struct dxgprocess_adapter *adapter_info = NULL;
+	int ret = 0;
+
+	dxgglobal_acquire_process_adapter_lock();
+
+	list_for_each_entry(entry, &process->process_adapter_list_head,
+			    process_adapter_list_entry) {
+		if (entry->adapter == adapter) {
+			adapter_info = entry;
+			break;
+		}
+	}
+	if (adapter_info == NULL) {
+		pr_err("failed to find process adapter info\n");
+		ret = -EINVAL;
+		goto cleanup;
+	}
+	mutex_lock(&adapter_info->device_list_mutex);
+	list_add_tail(&device->device_list_entry,
+		      &adapter_info->device_list_head);
+	device->adapter_info = adapter_info;
+	mutex_unlock(&adapter_info->device_list_mutex);
+
+cleanup:
+
+	dxgglobal_release_process_adapter_lock();
+	return ret;
+}
+
+void dxgprocess_adapter_remove_device(struct dxgdevice *device)
+{
+	pr_debug("%s %p\n", __func__, device);
+	mutex_lock(&device->adapter_info->device_list_mutex);
+	if (device->device_list_entry.next) {
+		list_del(&device->device_list_entry);
+		device->device_list_entry.next = NULL;
+	}
+	mutex_unlock(&device->adapter_info->device_list_mutex);
 }

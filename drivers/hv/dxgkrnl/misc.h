@@ -25,6 +25,7 @@ extern const struct d3dkmthandle zerohandle;
  * The higher enum value, the higher is the lock order.
  * When a lower lock ois held, the higher lock should not be acquired.
  *
+ * device_list_mutex
  * channel_lock
  * fd_mutex
  * plistmutex
