@@ -30,11 +30,6 @@ struct ioctl_desc {
 };
 static struct ioctl_desc ioctls[LX_IO_MAX + 1];
 
-static char *errorstr(int ret)
-{
-	return ret < 0 ? "err" : "";
-}
-
 static int dxgsyncobj_release(struct inode *inode, struct file *file)
 {
 	struct dxgsharedsyncobject *syncobj = file->private_data;
@@ -3536,7 +3531,7 @@ dxgk_wait_sync_object_cpu(struct dxgprocess *process, void *__user inargs)
 	}
 
 	ret = dxgvmb_send_wait_sync_object_cpu(process, adapter,
-					       &args, event_id);
+					       &args, true, event_id);
 	if (ret < 0)
 		goto cleanup;
 
