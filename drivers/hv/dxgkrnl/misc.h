@@ -26,6 +26,7 @@ extern const struct d3dkmthandle zerohandle;
  * When a lower lock ois held, the higher lock should not be acquired.
  *
  * device_list_mutex
+ * host_event_list_mutex
  * channel_lock
  * fd_mutex
  * plistmutex
