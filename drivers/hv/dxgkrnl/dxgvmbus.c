@@ -276,6 +276,23 @@ static void command_vm_to_host_init1(struct dxgkvmb_command_vm_to_host *command,
 	command->channel_type = DXGKVMB_VM_TO_HOST;
 }
 
+static void set_guest_data(struct dxgkvmb_command_host_to_vm *packet,
+			   u32 packet_length)
+{
+	struct dxgkvmb_command_setguestdata *command = (void *)packet;
+
+	pr_debug("%s: %d %d %p %p", __func__,
+		command->data_type,
+		command->data32,
+		command->guest_pointer,
+		&dxgglobal->device_state_counter);
+	if (command->data_type == SETGUESTDATA_DATATYPE_DWORD &&
+	    command->guest_pointer == &dxgglobal->device_state_counter &&
+	    command->data32 != 0) {
+		atomic_inc(&dxgglobal->device_state_counter);
+	}
+}
+
 static void signal_guest_event(struct dxgkvmb_command_host_to_vm *packet,
 			       u32 packet_length)
 {
@@ -306,6 +323,9 @@ static void process_inband_packet(struct dxgvmbuschannel *channel,
 			pr_debug("global packet %d",
 				    packet->command_type);
 			switch (packet->command_type) {
+			case DXGK_VMBCOMMAND_SETGUESTDATA:
+				set_guest_data(packet, packet_length);
+				break;
 			case DXGK_VMBCOMMAND_SIGNALGUESTEVENT:
 			case DXGK_VMBCOMMAND_SIGNALGUESTEVENTPASSIVE:
 				signal_guest_event(packet, packet_length);
@@ -1028,6 +1048,7 @@ struct d3dkmthandle dxgvmb_send_create_device(struct dxgadapter *adapter,
 	command_vgpu_to_host_init2(&command->hdr, DXGK_VMBCOMMAND_CREATEDEVICE,
 				   process->host_handle);
 	command->flags = args->flags;
+	command->error_code = &dxgglobal->device_state_counter;
 
 	ret = dxgvmb_send_sync_msg(msg.channel, msg.hdr, msg.size,
 				   &result, sizeof(result));
@@ -1785,6 +1806,51 @@ int dxgvmb_send_destroy_allocation(struct dxgprocess *process,
 
 cleanup:
 
+	free_message(&msg, process);
+	if (ret)
+		pr_debug("err: %s %d", __func__, ret);
+	return ret;
+}
+
+int dxgvmb_send_get_device_state(struct dxgprocess *process,
+				 struct dxgadapter *adapter,
+				 struct d3dkmt_getdevicestate *args,
+				 struct d3dkmt_getdevicestate *__user output)
+{
+	int ret;
+	struct dxgkvmb_command_getdevicestate *command;
+	struct dxgkvmb_command_getdevicestate_return result = { };
+	struct dxgvmbusmsg msg = {.hdr = NULL};
+
+	ret = init_message(&msg, adapter, process, sizeof(*command));
+	if (ret)
+		goto cleanup;
+	command = (void *)msg.msg;
+
+	command_vgpu_to_host_init2(&command->hdr,
+				   DXGK_VMBCOMMAND_GETDEVICESTATE,
+				   process->host_handle);
+	command->args = *args;
+
+	ret = dxgvmb_send_sync_msg(msg.channel, msg.hdr, msg.size,
+				   &result, sizeof(result));
+	if (ret < 0)
+		goto cleanup;
+
+	ret = ntstatus2int(result.status);
+	if (ret < 0)
+		goto cleanup;
+
+	ret = copy_to_user(output, &result.args, sizeof(result.args));
+	if (ret) {
+		pr_err("%s failed to copy output args", __func__);
+		ret = -EINVAL;
+	}
+
+	if (args->state_type == _D3DKMT_DEVICESTATE_EXECUTION)
+		args->execution_state = result.args.execution_state;
+
+cleanup:
 	free_message(&msg, process);
 	if (ret)
 		pr_debug("err: %s %d", __func__, ret);
