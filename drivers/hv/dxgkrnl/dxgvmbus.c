@@ -495,6 +495,85 @@ cleanup:
 	return ret;
 }
 
+int dxgvmb_send_create_process(struct dxgprocess *process)
+{
+	int ret;
+	struct dxgkvmb_command_createprocess *command;
+	struct dxgkvmb_command_createprocess_return result = { 0 };
+	struct dxgvmbusmsg msg;
+	char s[WIN_MAX_PATH];
+	int i;
+
+	ret = init_message(&msg, NULL, process, sizeof(*command));
+	if (ret)
+		return ret;
+	command = (void *)msg.msg;
+
+	ret = dxgglobal_acquire_channel_lock();
+	if (ret < 0)
+		goto cleanup;
+
+	command_vm_to_host_init1(&command->hdr, DXGK_VMBCOMMAND_CREATEPROCESS);
+	command->process = process;
+	command->process_id = process->process->pid;
+	command->linux_process = 1;
+	s[0] = 0;
+	__get_task_comm(s, WIN_MAX_PATH, process->process);
+	for (i = 0; i < WIN_MAX_PATH; i++) {
+		command->process_name[i] = s[i];
+		if (s[i] == 0)
+			break;
+	}
+
+	ret = dxgvmb_send_sync_msg(&dxgglobal->channel, msg.hdr, msg.size,
+				   &result, sizeof(result));
+	if (ret < 0) {
+		pr_err("create_process failed %d", ret);
+	} else if (result.hprocess.v == 0) {
+		pr_err("create_process returned 0 handle");
+		ret = -ENOTRECOVERABLE;
+	} else {
+		process->host_handle = result.hprocess;
+		pr_debug("create_process returned %x",
+			    process->host_handle.v);
+	}
+
+	dxgglobal_release_channel_lock();
+
+cleanup:
+	free_message(&msg, process);
+	if (ret)
+		pr_debug("err: %s %d", __func__, ret);
+	return ret;
+}
+
+int dxgvmb_send_destroy_process(struct d3dkmthandle process)
+{
+	int ret;
+	struct dxgkvmb_command_destroyprocess *command;
+	struct dxgvmbusmsg msg;
+
+	ret = init_message(&msg, NULL, NULL, sizeof(*command));
+	if (ret)
+		return ret;
+	command = (void *)msg.msg;
+
+	ret = dxgglobal_acquire_channel_lock();
+	if (ret < 0)
+		goto cleanup;
+	command_vm_to_host_init2(&command->hdr, DXGK_VMBCOMMAND_DESTROYPROCESS,
+				 process);
+	ret = dxgvmb_send_sync_msg_ntstatus(&dxgglobal->channel,
+					    msg.hdr, msg.size);
+	dxgglobal_release_channel_lock();
+
+cleanup:
+	free_message(&msg, NULL);
+	if (ret)
+		pr_debug("err: %s %d", __func__, ret);
+	return ret;
+}
+
 /*
  * Virtual GPU messages to the host
  */

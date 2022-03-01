@@ -27,9 +27,11 @@
 #include <linux/pci.h>
 #include <linux/hyperv.h>
 
+struct dxgprocess;
 struct dxgadapter;
 
 #include "misc.h"
+#include "hmgr.h"
 #include <uapi/misc/d3dkmthk.h>
 
 struct dxgk_device_types {
@@ -137,9 +139,43 @@ struct dxgvmbuschannel *dxgglobal_get_dxgvmbuschannel(void);
 int dxgglobal_acquire_channel_lock(void);
 void dxgglobal_release_channel_lock(void);
 
+/*
+ * The structure represents a process, which opened the /dev/dxg device.
+ * A corresponding object is created on the host.
+ */
 struct dxgprocess {
-	/* Placeholder */
+	/*
+	 * Process list entry in dxgglobal.
+	 * Protected by the dxgglobal->plistmutex.
+	 */
+	struct list_head	plistentry;
+	struct task_struct	*process;
+	pid_t			pid;
+	pid_t			tgid;
+	/* how many time the process was opened */
+	struct kref		process_kref;
+	/*
+	 * This handle table is used for all objects except dxgadapter
+	 * The handle table lock order is higher than the local_handle_table
+	 * lock
+	 */
+	struct hmgrtable	handle_table;
+	/*
+	 * This handle table is used for dxgadapter objects.
+	 * The handle table lock order is lowest.
+	 */
+	struct hmgrtable	local_handle_table;
+	/* Handle of the corresponding objec on the host */
+	struct d3dkmthandle	host_handle;
 };
+
+struct dxgprocess *dxgprocess_create(void);
+void dxgprocess_destroy(struct dxgprocess *process);
+void dxgprocess_release(struct kref *refcount);
+void dxgprocess_ht_lock_shared_down(struct dxgprocess *process);
+void dxgprocess_ht_lock_shared_up(struct dxgprocess *process);
+void dxgprocess_ht_lock_exclusive_down(struct dxgprocess *process);
+void dxgprocess_ht_lock_exclusive_up(struct dxgprocess *process);
 
 enum dxgadapter_state {
 	DXGADAPTER_STATE_ACTIVE		= 0,
@@ -210,6 +246,8 @@ static inline void guid_to_luid(guid_t *guid, struct winluid *luid)
 void dxgvmb_initialize(void);
 int dxgvmb_send_set_iospace_region(u64 start, u64 len,
 				   struct vmbus_gpadl *shared_mem_gpadl);
+int dxgvmb_send_create_process(struct dxgprocess *process);
+int dxgvmb_send_destroy_process(struct d3dkmthandle process);
 int dxgvmb_send_open_adapter(struct dxgadapter *adapter);
 int dxgvmb_send_close_adapter(struct dxgadapter *adapter);
 int dxgvmb_send_get_internal_adapter_info(struct dxgadapter *adapter);

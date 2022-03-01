@@ -205,16 +205,79 @@ static void dxgglobal_stop_adapters(void)
 }
 
 /*
+ * Returns dxgprocess for the current executing process.
+ * Creates dxgprocess if it doesn't exist.
+ */
+static struct dxgprocess *dxgglobal_get_current_process(void)
+{
+	/*
+	 * Find the DXG process for the current process.
+	 * A new process is created if necessary.
+	 */
+	struct dxgprocess *process = NULL;
+	struct dxgprocess *entry = NULL;
+
+	mutex_lock(&dxgglobal->plistmutex);
+	list_for_each_entry(entry, &dxgglobal->plisthead, plistentry) {
+		/* All threads of a process have the same thread group ID */
+		if (entry->process->tgid == current->tgid) {
+			if (kref_get_unless_zero(&entry->process_kref)) {
+				process = entry;
+				pr_debug("found dxgprocess");
+			} else {
+				pr_debug("process is destroyed");
+			}
+			break;
+		}
+	}
+	mutex_unlock(&dxgglobal->plistmutex);
+
+	if (process == NULL)
+		process = dxgprocess_create();
+
+	return process;
+}
+
+/*
  * File operations for the /dev/dxg device
  */
 
 static int dxgk_open(struct inode *n, struct file *f)
 {
-	return 0;
+	int ret = 0;
+	struct dxgprocess *process;
+
+	pr_debug("%s %p %d %d",
+		     __func__, f, current->pid, current->tgid);
+
+
+	/* Find/create a dxgprocess structure for this process */
+	process = dxgglobal_get_current_process();
+
+	if (process) {
+		f->private_data = process;
+	} else {
+		pr_debug("cannot create dxgprocess for open\n");
+		ret = -EBADF;
+	}
+
+	pr_debug("%s end %x", __func__, ret);
+	return ret;
 }
 
 static int dxgk_release(struct inode *n, struct file *f)
 {
+	struct dxgprocess *process;
+
+	process = (struct dxgprocess *)f->private_data;
+	pr_debug("%s %p, %p", __func__, f, process);
+
+	if (process == NULL)
+		return -EINVAL;
+
+	kref_put(&process->process_kref, dxgprocess_release);
+
+	f->private_data = NULL;
 	return 0;
 }
 
@@ -236,6 +299,8 @@ const struct file_operations dxgk_fops = {
 	.owner = THIS_MODULE,
 	.open = dxgk_open,
 	.release = dxgk_release,
+	.compat_ioctl = dxgk_compat_ioctl,
+	.unlocked_ioctl = dxgk_unlocked_ioctl,
 	.write = dxgk_write,
 	.read = dxgk_read,
 };

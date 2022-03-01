@@ -14,7 +14,11 @@
 #ifndef _DXGVMBUS_H
 #define _DXGVMBUS_H
 
+struct dxgprocess;
+struct dxgadapter;
+
 #define DXG_MAX_VM_BUS_PACKET_SIZE	(1024 * 128)
+#define DXG_VM_PROCESS_NAME_LENGTH	260
 
 enum dxgkvmb_commandchanneltype {
 	DXGKVMB_VGPU_TO_HOST,
@@ -167,6 +171,26 @@ struct dxgkvmb_command_setiospaceregion {
 	u64				start;
 	u64				length;
 	u32				shared_page_gpadl;
+};
+
+struct dxgkvmb_command_createprocess {
+	struct dxgkvmb_command_vm_to_host hdr;
+	void			*process;
+	u64			process_id;
+	u16			process_name[DXG_VM_PROCESS_NAME_LENGTH + 1];
+	u8			csrss_process:1;
+	u8			dwm_process:1;
+	u8			wow64_process:1;
+	u8			linux_process:1;
+};
+
+struct dxgkvmb_command_createprocess_return {
+	struct d3dkmthandle	hprocess;
+};
+
+// The command returns ntstatus
+struct dxgkvmb_command_destroyprocess {
+	struct dxgkvmb_command_vm_to_host hdr;
 };
 
 struct dxgkvmb_command_openadapter {

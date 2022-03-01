@@ -54,4 +54,6 @@ struct winluid {
 	__u32 b;
 };
 
+#define LX_IO_MAX 0x45
+
 #endif /* _D3DKMTHK_H */
